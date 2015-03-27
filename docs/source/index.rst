@@ -65,17 +65,17 @@ Fields abstractions
 Documents
 ---------
 
-.. autoclass:: nefertari.engine.mongodb.documents.BaseMixin
+.. autoclass:: nefertari_mongodb.documents.BaseMixin
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.documents.BaseDocument
+.. autoclass:: nefertari_mongodb.documents.BaseDocument
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.documents.ESBaseDocument
+.. autoclass:: nefertari_mongodb.documents.ESBaseDocument
     :members:
     :special-members:
     :private-members:
@@ -84,12 +84,12 @@ Documents
 Serializers
 -----------
 
-.. autoclass:: nefertari.engine.mongodb.serializers.JSONEncoder
+.. autoclass:: nefertari_mongodb.serializers.JSONEncoder
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.serializers.ESJSONSerializer
+.. autoclass:: nefertari_mongodb.serializers.ESJSONSerializer
     :members:
     :special-members:
     :private-members:
@@ -99,122 +99,122 @@ Fields
 ------
 
 
-.. autoclass:: nefertari.engine.mongodb.fields.IntegerField
+.. autoclass:: nefertari_mongodb.fields.IntegerField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.BigIntegerField
+.. autoclass:: nefertari_mongodb.fields.BigIntegerField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.SmallIntegerField
+.. autoclass:: nefertari_mongodb.fields.SmallIntegerField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.BooleanField
+.. autoclass:: nefertari_mongodb.fields.BooleanField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.DateField
+.. autoclass:: nefertari_mongodb.fields.DateField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.DateTimeField
+.. autoclass:: nefertari_mongodb.fields.DateTimeField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.FloatField
+.. autoclass:: nefertari_mongodb.fields.FloatField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.StringField
+.. autoclass:: nefertari_mongodb.fields.StringField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.TextField
+.. autoclass:: nefertari_mongodb.fields.TextField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.UnicodeField
+.. autoclass:: nefertari_mongodb.fields.UnicodeField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.UnicodeTextField
+.. autoclass:: nefertari_mongodb.fields.UnicodeTextField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.ChoiceField
+.. autoclass:: nefertari_mongodb.fields.ChoiceField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.BinaryField
+.. autoclass:: nefertari_mongodb.fields.BinaryField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.DecimalField
+.. autoclass:: nefertari_mongodb.fields.DecimalField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.TimeField
+.. autoclass:: nefertari_mongodb.fields.TimeField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.PickleField
+.. autoclass:: nefertari_mongodb.fields.PickleField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.IntervalField
+.. autoclass:: nefertari_mongodb.fields.IntervalField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.ListField
+.. autoclass:: nefertari_mongodb.fields.ListField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.DictField
+.. autoclass:: nefertari_mongodb.fields.DictField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.PrimaryKeyField
+.. autoclass:: nefertari_mongodb.fields.PrimaryKeyField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.ForeignKeyField
+.. autoclass:: nefertari_mongodb.fields.ForeignKeyField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.ReferenceField
+.. autoclass:: nefertari_mongodb.fields.ReferenceField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.RelationshipField
+.. autoclass:: nefertari_mongodb.fields.RelationshipField
     :members:
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari.engine.mongodb.fields.Relationship
+.. autoclass:: nefertari_mongodb.fields.Relationship
     :members:
     :special-members:
     :private-members:
