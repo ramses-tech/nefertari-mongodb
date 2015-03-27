@@ -1,2 +1,2 @@
-# nefertari-mongodb
+# `nefertari-mongodb`
 MongoDB backend for Nefertari

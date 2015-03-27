@@ -7,10 +7,9 @@ here = os.path.abspath(os.path.dirname(__file__))
 install_requires = [
     'mongoengine',
     'zope.dottedname',
-    'pyramid_sqlalchemy',
-    'sqlalchemy_utils',
     'elasticsearch',
-
+    'python-dateutil',
+    'pyramid_tm'
 ]
 
 setup(
