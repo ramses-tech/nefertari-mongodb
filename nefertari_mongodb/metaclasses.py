@@ -28,12 +28,12 @@ class DocumentMetaclass(Document.my_metaclass):
     of this metaclass.
     """
 
-    def __new__(cls, name, bases, attrs):
-        new_class = super(DocumentMetaclass, cls).__new__(
-            cls, name, bases, attrs)
+    def __init__(self, name, bases, attrs):
+        """ Override new class initialization to create backreferences.
 
-        # Create backreferences
-        for field_name, field in new_class._fields.items():
+        """
+        super(DocumentMetaclass, self).__init__(name, bases, attrs)
+        for field_name, field in self._fields.items():
 
             # Field is not a relationship field
             if not isinstance(field, (ReferenceField, RelationshipField)):
@@ -46,7 +46,7 @@ class DocumentMetaclass(Document.my_metaclass):
             # Prepare kwargs for new ReferenceField
             backref_kw = field.backref_kwargs.copy()
             backref_name = backref_kw.pop('name')
-            backref_kw['document'] = new_class.__name__
+            backref_kw['document'] = self.__name__
 
             # Create backref ReferenceField. Set its name and `db_field` prop
             backref_field = ReferenceField(**backref_kw)
@@ -82,12 +82,10 @@ class DocumentMetaclass(Document.my_metaclass):
             delete_rule = getattr(backref_field, 'reverse_delete_rule',
                                   DO_NOTHING)
             if delete_rule != DO_NOTHING:
-                new_class.register_delete_rule(
+                self.register_delete_rule(
                     target_cls,
                     backref_name,
                     delete_rule)
-
-        return new_class
 
 
 class ESMetaclass(DocumentMetaclass):
