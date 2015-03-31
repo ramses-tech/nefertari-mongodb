@@ -318,21 +318,18 @@ class BaseMixin(object):
             return pos_keys, neg_keys
 
         def update_dict():
-            name = params.pop('name')
+            final_value = getattr(self, attr, {}) or {}
+            final_value = final_value.copy()
+            positive, negative = split_keys(params.keys())
 
-            if name.startswith("-"):
-                self[attr].pop(name[1:], None)
-            else:
-                pos, neg = split_keys(params.keys())
-                vals = pos + ["-%s" % n for n in neg]
-                if not vals:
-                    raise JHTTPBadRequest('missing params')
+            # Pop negative keys
+            for key in negative:
+                final_value.pop(key, None)
 
-                if value_type == list:
-                    self[attr][name] = vals
-                else:
-                    self[attr][name] = vals[0]
-            self.save()
+            # Set positive keys
+            for key in positive:
+                final_value[unicode(key)] = params[key]
+            self.update({attr: final_value})
 
         def update_list():
             pos_keys, neg_keys = split_keys(params.keys())
@@ -342,12 +339,12 @@ class BaseMixin(object):
 
             if pos_keys:
                 if unique:
-                    self.update(**{'add_to_set__%s' % attr: pos_keys})
+                    self.update({'add_to_set__%s' % attr: pos_keys})
                 else:
-                    self.update(**{'push_all__%s' % attr: pos_keys})
+                    self.update({'push_all__%s' % attr: pos_keys})
 
             if neg_keys:
-                self.update(**{'pull_all__%s' % attr: neg_keys})
+                self.update({'pull_all__%s' % attr: neg_keys})
 
         if is_dict:
             update_dict()
