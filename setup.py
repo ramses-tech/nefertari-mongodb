@@ -2,8 +2,6 @@ import os
 
 from setuptools import setup, find_packages
 
-here = os.path.abspath(os.path.dirname(__file__))
-
 install_requires = [
     'mongoengine',
     'zope.dottedname',
@@ -14,7 +12,7 @@ install_requires = [
 
 setup(
     name='nefertari_mongodb',
-    version="0.1",
+    version="0.1.0",
     description='mongodb engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
