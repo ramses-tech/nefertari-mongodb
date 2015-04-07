@@ -116,6 +116,28 @@ class BaseMixin(object):
         return query_set.count(with_limit_and_skip=True)
 
     @classmethod
+    def filter_objects(cls, objects, first=False, **params):
+        """ Perform query with :params: on instances sequence :objects:
+
+        Arguments:
+            :object: Sequence of :cls: instances on which query should be run.
+            :params: Query parameters.
+        """
+        id_name = cls.id_field()
+        key = '{}__in'.format(id_name)
+        ids = [getattr(obj, id_name, None) for obj in objects]
+        ids = [str(id_) for id_ in ids if id_ is not None]
+        params[key] = ids
+        if first:
+            params['_limit'] = 1
+            params['__raise_on_empty'] = True
+        queryset = cls.get_collection(**params)
+
+        if first:
+            return queryset.first()
+        return queryset
+
+    @classmethod
     def get_collection(cls, **params):
         """
         params may include '_limit', '_page', '_sort', '_fields'
