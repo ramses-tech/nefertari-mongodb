@@ -443,7 +443,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         """
         for name, field in self._fields.items():
             if hasattr(field, 'apply_processors'):
-                value = self._data.get(name)
+                value = getattr(self, name)
                 value = field.apply_processors(value)
                 setattr(self, name, value)
 
