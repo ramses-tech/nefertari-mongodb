@@ -128,14 +128,11 @@ class BaseMixin(object):
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
         params[key] = ids
-        if first:
-            params['_limit'] = 1
-            params['__raise_on_empty'] = True
-        queryset = cls.get_collection(**params)
 
         if first:
-            return queryset.first()
-        return queryset
+            return cls.get_resource(**params)
+        else:
+            return cls.get_collection(**params)
 
     @classmethod
     def get_collection(cls, **params):
