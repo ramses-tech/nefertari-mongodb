@@ -29,7 +29,7 @@ from .fields import (
     UnicodeField,
     UnicodeTextField,
     Relationship,
-    PrimaryKeyField,
+    IdField,
     ForeignKeyField,
 
     ListField,
