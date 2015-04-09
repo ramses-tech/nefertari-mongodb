@@ -308,14 +308,15 @@ class DictField(ProcessableMixin, BaseFieldMixin, fields.DictField):
     _valid_kwargs = ('basecls', 'field')
 
 
-class PrimaryKeyField(ProcessableMixin, BaseFieldMixin, fields.ObjectIdField):
-    """ Just a subclass of ObjectIdField. """
+class IdField(ProcessableMixin, BaseFieldMixin, fields.ObjectIdField):
+    """ Just a subclass of ObjectIdField that must be used for fields
+    that represent database-specific 'id' field.
+    """
     _valid_kwargs = ('primary_key',)
 
     def __init__(self, *args, **kwargs):
-        # kwargs['primary_key'] = True
-        kwargs['primary_key'] = False
-        super(PrimaryKeyField, self).__init__(*args, **kwargs)
+        kwargs.pop('primary_key', None)
+        super(IdField, self).__init__(*args, **kwargs)
 
 
 class ForeignKeyField(BaseFieldMixin, fields.StringField):
