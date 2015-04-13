@@ -142,6 +142,7 @@ class BaseMixin(object):
         returns paginated and sorted query set
         raises JHTTPBadRequest for bad values in params
         """
+        log.debug('Get collection: {}, {}'.format(cls.__name__, params))
         params.pop('__confirmation', False)
         __strict = params.pop('__strict', True)
 
