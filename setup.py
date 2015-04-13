@@ -3,7 +3,8 @@ import os
 from setuptools import setup, find_packages
 
 install_requires = [
-    'mongoengine',
+    'mongoengine==0.9',
+    'pymongo==2.8',
     'zope.dottedname',
     'elasticsearch',
     'python-dateutil',
