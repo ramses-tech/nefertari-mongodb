@@ -1,5 +1,6 @@
 import logging
 import datetime
+import decimal
 
 import elasticsearch
 from bson import ObjectId, DBRef
@@ -17,6 +18,9 @@ class JSONEncoder(_JSONEncoder):
 
         if isinstance(obj, DBRef):
             return str(obj)
+
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
 
         if (isinstance(obj, datetime.date) and
                 not isinstance(obj, datetime.datetime)):
@@ -41,6 +45,8 @@ class ESJSONSerializer(elasticsearch.serializer.JSONSerializer):
             return data.strftime('%H:%M:%S')
         if isinstance(data, datetime.timedelta):
             return str(data)
+        if isinstance(data, decimal.Decimal):
+            return float(data)
         try:
             return super(ESJSONSerializer, self).default(data)
         except:
