@@ -301,7 +301,31 @@ class IntervalField(IntegerField):
 
 
 class ListField(ProcessableMixin, BaseFieldMixin, fields.ListField):
+    """ Custom ListField.
+
+    Custom part is the value validation. Choices are stored in a separate
+    attribute :self.list_choices: and validation checks if value (which is
+    a sequence) has values other than those specified in :self.list_choices:.
+
+    Original mongoengine ListField validation requires value to be a sequence
+    but checks for value(sequence) inclusion into choices.
+    """
     _valid_kwargs = ('field',)
+
+    def __init__(self, *args, **kwargs):
+        self.list_choices = kwargs.pop('choices', None)
+        super(ListField, self).__init__(*args, **kwargs)
+
+    def validate(self, value, **kwargs):
+        super(ListField, self).validate(value, **kwargs)
+        if self.list_choices and value is not None:
+            choice_list = self.list_choices
+            if isinstance(self.list_choices[0], (list, tuple)):
+                choice_list = [k for k, v in self.list_choices]
+            if set(value) - set(choice_list):
+                self.error('Value must be one of {}. Got: {}'.format(
+                    unicode(choice_list), unicode(value)))
+        return value
 
 
 class DictField(ProcessableMixin, BaseFieldMixin, fields.DictField):

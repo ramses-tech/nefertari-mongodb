@@ -1,3 +1,4 @@
+import copy
 import logging
 from datetime import datetime
 
@@ -351,19 +352,22 @@ class BaseMixin(object):
             self.update({attr: final_value})
 
         def update_list():
-            pos_keys, neg_keys = split_keys(params.keys())
+            final_value = getattr(self, attr, []) or []
+            final_value = copy.deepcopy(final_value)
+            positive, negative = split_keys(params.keys())
 
-            if not (pos_keys + neg_keys):
-                raise JHTTPBadRequest('missing params')
+            if not (positive + negative):
+                raise JHTTPBadRequest('Missing params')
 
-            if pos_keys:
+            if positive:
                 if unique:
-                    self.update({'add_to_set__%s' % attr: pos_keys})
-                else:
-                    self.update({'push_all__%s' % attr: pos_keys})
+                    positive = [v for v in positive if v not in final_value]
+                final_value += positive
 
-            if neg_keys:
-                self.update({'pull_all__%s' % attr: neg_keys})
+            if negative:
+                final_value = list(set(final_value) - set(negative))
+
+            self.update({attr: final_value})
 
         if is_dict:
             update_dict()
