@@ -99,9 +99,21 @@ class DateField(ProcessableMixin, BaseFieldMixin, fields.DateTimeField):
     """ Custom field that stores `datetime.date` instances.
 
     This is basically mongoengine's `DateTimeField` which gets
-    datetime's `.date()` before storing to mongo.
+    datetime's `.date()` and formats it into a string before storing
+    to mongo.
     """
     _valid_kwargs = ()
+
+    def validate(self, value):
+        new_value = self.to_python(value)
+        if not isinstance(new_value, datetime.date):
+            self.error("Can't parse date `%s`" % value)
+
+    def to_python(self, *args, **kwargs):
+        value = super(DateField, self).to_python(*args, **kwargs)
+        if isinstance(value, basestring):
+            value = dateutil.parser.parse(value, dayfirst=False).date()
+        return value
 
     def to_mongo(self, *args, **kwargs):
         """ Override mongo's DateTimeField value conversion to get
@@ -110,7 +122,7 @@ class DateField(ProcessableMixin, BaseFieldMixin, fields.DateTimeField):
         value = super(DateField, self).to_mongo(*args, **kwargs)
         if isinstance(value, datetime.datetime):
             value = value.date()
-        return value
+        return value.strftime('%Y-%m-%d')
 
 
 class DateTimeField(ProcessableMixin, BaseFieldMixin, fields.DateTimeField):
@@ -205,7 +217,7 @@ class DecimalField(ProcessableMixin, BaseFieldMixin, fields.DecimalField):
             scale -> precision
         """
         kwargs = super(DecimalField, self).translate_kwargs(kwargs)
-        kwargs['precision'] = kwargs.pop('scale', None)
+        kwargs['precision'] = kwargs.pop('scale')
         return kwargs
 
 
@@ -214,12 +226,17 @@ class TimeField(ProcessableMixin, BaseFieldMixin, fields.BaseField):
     _valid_kwargs = ()
 
     def validate(self, value):
-        new_value = self.to_mongo(value)
+        new_value = self.to_python(value)
         if not isinstance(new_value, datetime.time):
             self.error("Can't parse time `%s`" % value)
 
     def to_mongo(self, value):
         value = super(TimeField, self).to_mongo(value)
+        if not isinstance(value, basestring):
+            value = value.strftime('%H:%M:%S')
+        return value
+
+    def to_python(self, value):
         if value is None:
             return value
         if isinstance(value, datetime.time):
@@ -236,12 +253,6 @@ class TimeField(ProcessableMixin, BaseFieldMixin, fields.BaseField):
             return dateutil.parser.parse(value).time()
         except (TypeError, ValueError):
             return None
-
-    def to_python(self, value):
-        value = super(TimeField, self).to_python(value)
-        if not isinstance(value, datetime.time):
-            value = value.time()
-        return value
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)
@@ -288,10 +299,9 @@ class IntervalField(IntegerField):
         return super(IntervalField, self).validate(value)
 
     def to_mongo(self, value):
-        if not isinstance(value, datetime.timedelta):
-            self.error('IntervalField value must be an instance of '
-                       '`datetime.timedelta`.')
-        return int(value.total_seconds())
+        if isinstance(value, datetime.timedelta):
+            value = int(value.total_seconds())
+        return value
 
     def to_python(self, value):
         return datetime.timedelta(seconds=value)
