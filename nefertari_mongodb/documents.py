@@ -312,6 +312,8 @@ class BaseMixin(object):
             _data[attr] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
+        if not _dict.get('id'):
+            _dict['id'] = getattr(self, self.id_field())
         return _dict
 
     def get_reference_documents(self):
