@@ -417,6 +417,13 @@ class BaseDocument(BaseMixin, mongo.Document):
     }
 
     def save(self, *arg, **kw):
+        """
+        Force insert document in creation so unique constraits are respected.
+        This makes each collection POST be a 'create' operation as POST
+        should be and not 'update'.
+        """
+        kw['force_insert'] = self._created
+
         sync_backref = kw.pop('sync_backref', True)
         if self._get_changed_fields():
             self.updated_at = datetime.utcnow()
