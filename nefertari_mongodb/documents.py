@@ -251,11 +251,19 @@ class BaseMixin(object):
     def _update(self, params, **kw):
         process_bools(params)
         self.check_fields_allowed(params.keys())
+        iter_fields = set(
+            k for k, v in type(self)._fields.items()
+            if isinstance(v, (mongo.DictField, mongo.ListField)))
         id_field = self.id_field()
+
         for key, value in params.items():
             if key == id_field:  # can't change the primary key
                 continue
-            setattr(self, key, value)
+            if key in iter_fields:
+                self.update_iterables(value, key, unique=True, save=False)
+            else:
+                setattr(self, key, value)
+
         return self.save(**kw)
 
     @classmethod
@@ -324,7 +332,8 @@ class BaseMixin(object):
             documents = to_dicts(model_cls.objects(**{key: self}))
             yield model_cls, documents
 
-    def update_iterables(self, params, attr, unique=False, value_type=None):
+    def update_iterables(self, params, attr, unique=False,
+                         value_type=None, save=True):
         is_dict = isinstance(type(self)._fields[attr], mongo.DictField)
         is_list = isinstance(type(self)._fields[attr], mongo.ListField)
 
@@ -353,12 +362,16 @@ class BaseMixin(object):
             # Set positive keys
             for key in positive:
                 final_value[unicode(key)] = params[key]
-            self.update({attr: final_value})
+
+            setattr(self, attr, final_value)
+            if save:
+                self.save()
 
         def update_list():
             final_value = getattr(self, attr, []) or []
             final_value = copy.deepcopy(final_value)
-            positive, negative = split_keys(params.keys())
+            keys = params.keys() if isinstance(params, dict) else params
+            positive, negative = split_keys(keys)
 
             if not (positive + negative):
                 raise JHTTPBadRequest('Missing params')
@@ -371,7 +384,9 @@ class BaseMixin(object):
             if negative:
                 final_value = list(set(final_value) - set(negative))
 
-            self.update({attr: final_value})
+            setattr(self, attr, final_value)
+            if save:
+                self.save()
 
         if is_dict:
             update_dict()
