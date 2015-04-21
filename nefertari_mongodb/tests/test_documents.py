@@ -55,7 +55,7 @@ class TestBaseMixin(object):
 
     def test_id_field(self):
         class MyModel(docs.BaseDocument):
-            my_id = fields.PrimaryKeyField()
+            my_id = fields.IdField()
             name = fields.StringField()
 
         assert MyModel.id_field() == 'my_id'
