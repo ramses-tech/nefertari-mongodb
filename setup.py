@@ -8,7 +8,8 @@ install_requires = [
     'zope.dottedname',
     'elasticsearch',
     'python-dateutil',
-    'pyramid_tm'
+    'pyramid_tm',
+    'nefertari'
 ]
 
 setup(
