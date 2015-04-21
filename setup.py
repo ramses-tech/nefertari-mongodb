@@ -9,12 +9,12 @@ install_requires = [
     'elasticsearch',
     'python-dateutil',
     'pyramid_tm',
-    'nefertari'
+    'nefertari==0.2.1'
 ]
 
 setup(
     name='nefertari_mongodb',
-    version="0.1.0",
+    version="0.1.1",
     description='mongodb engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
@@ -24,9 +24,9 @@ setup(
         "Topic :: Database",
         "Topic :: Database :: Database Engines/Servers",
     ],
-    author='',
-    author_email='',
-    url='',
+    author='Brandicted',
+    author_email='hello@brandicted.com',
+    url='https://github.com/brandicted/nefertari-mongodb',
     keywords='web wsgi bfg pylons pyramid rest mongodb mongoengine',
     packages=find_packages(),
     include_package_data=True,
