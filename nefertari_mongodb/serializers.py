@@ -26,6 +26,9 @@ class JSONEncoder(_JSONEncoder):
                 not isinstance(obj, datetime.datetime)):
             return obj.strftime('%Y-%m-%d')
 
+        if isinstance(obj, datetime.timedelta):
+            return obj.seconds
+
         if hasattr(obj, 'to_dict'):
             # If it got to this point, it means its a nested object.
             # outter objects would have been handled with DataProxy.
@@ -44,7 +47,7 @@ class ESJSONSerializer(elasticsearch.serializer.JSONSerializer):
         if isinstance(data, datetime.time):
             return data.strftime('%H:%M:%S')
         if isinstance(data, datetime.timedelta):
-            return str(data)
+            return data.seconds
         if isinstance(data, decimal.Decimal):
             return float(data)
         try:
