@@ -65,6 +65,26 @@ class BaseMixin(object):
     Q = mongo.Q
 
     @classmethod
+    def autogenerate_for(cls, model, set_to):
+        """ Setup `post_save` event handler.
+
+        Event handler is registered for class :model: and creates a new
+        instance of :cls: with a field :set_to: set to an instance on
+        which event occured.
+
+        Defined handler is setup as class method because mongoengine refuses
+        to call signal handlers if they aren't importable.
+        """
+        from mongoengine import signals
+
+        def generate(cls, sender, document, *args, **kw):
+            if kw.get('created', False):
+                cls(**{set_to: document}).save()
+
+        cls._generate_on_creation = classmethod(generate)
+        signals.post_save.connect(cls._generate_on_creation, sender=model)
+
+    @classmethod
     def id_field(cls):
         return cls._meta['id_field']
 
