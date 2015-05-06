@@ -89,6 +89,10 @@ class BaseMixin(object):
         return cls._meta['id_field']
 
     @classmethod
+    def id_field_type(cls):
+        return getattr(cls, cls.id_field()).__class__
+
+    @classmethod
     def check_fields_allowed(cls, fields):
         if issubclass(cls, mongo.DynamicDocument):
             # Dont check if its dynamic doc
