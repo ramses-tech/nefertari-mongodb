@@ -56,9 +56,9 @@ class TestBaseMixin(object):
     def test_id_field(self):
         class MyModel(docs.BaseDocument):
             my_id = fields.IdField()
-            name = fields.StringField()
+            name = fields.StringField(primary_key=True)
 
-        assert MyModel.id_field() == 'my_id'
+        assert MyModel.id_field() == 'name'
 
     def test_check_fields_allowed_not_existing_field(self):
         class MyModel(docs.BaseDocument):
