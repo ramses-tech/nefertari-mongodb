@@ -175,12 +175,14 @@ class BaseMixin(object):
         _limit = params.pop('_limit', None)
         _page = params.pop('_page', None)
         _start = params.pop('_start', None)
+        query_set = params.pop('query_set', None)
 
         _count = '_count' in params; params.pop('_count', None)
         _explain = '_explain' in params; params.pop('_explain', None)
         __raise_on_empty = params.pop('__raise_on_empty', False)
 
-        query_set = cls.objects
+        if query_set is None:
+            query_set = cls.objects
 
         # Remove any __ legacy instructions from this point on
         params = dictset(filter(lambda item: not item[0].startswith('__'), params.items()))
