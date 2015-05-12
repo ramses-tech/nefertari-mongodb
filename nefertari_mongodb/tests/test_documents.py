@@ -3,8 +3,7 @@ from mock import patch, Mock
 
 import mongoengine as mongo
 from nefertari.utils.dictset import dictset
-from nefertari.json_httpexceptions import (
-    JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
+from nefertari.json_httpexceptions import JHTTPBadRequest
 
 from .. import documents as docs
 from .. import fields
@@ -53,12 +52,12 @@ class TestDocumentHelpers(object):
 
 class TestBaseMixin(object):
 
-    def test_id_field(self):
+    def test_pk_field(self):
         class MyModel(docs.BaseDocument):
             my_id = fields.IdField()
             name = fields.StringField(primary_key=True)
 
-        assert MyModel.id_field() == 'name'
+        assert MyModel.pk_field() == 'name'
 
     def test_check_fields_allowed_not_existing_field(self):
         class MyModel(docs.BaseDocument):

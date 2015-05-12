@@ -1,5 +1,3 @@
-import mongoengine as mongo
-
 from .fields import (RelationshipField, ReferenceField)
 
 relationship_fields = (RelationshipField, ReferenceField)

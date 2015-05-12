@@ -16,16 +16,16 @@ class DocumentMetaclass(Document.my_metaclass):
 
     Backreference is created if field, that defines a relationship, provides
     additional set of arguments for backreference that are prefixed with
-    `ReferenceField._backref_prefix`. Arguments are the same as for `Relationship`
-    except:
+    `ReferenceField._backref_prefix`. Arguments are the same as for
+    `Relationship` except:
         1. `document` is not a valid argument for backref;
         2. `name` backref argument must be provided and should be the name of
            the backreference field that will be created on the other side of
            relationship.
 
     Follow inline comments in the code to understand how the process of backref
-    creation goes. Check `mongoengine/base/metaclasses.py` for the original code
-    of this metaclass.
+    creation goes. Check `mongoengine/base/metaclasses.py` for the original
+    code of this metaclass.
     """
 
     def __init__(self, name, bases, attrs):
@@ -39,7 +39,8 @@ class DocumentMetaclass(Document.my_metaclass):
             if not isinstance(field, (ReferenceField, RelationshipField)):
                 continue
 
-            # Field has no backreference kwargs, thus does not use backreference
+            # Field has no backreference kwargs, thus does not use
+            # backreference
             if not (hasattr(field, 'backref_kwargs') and field.backref_kwargs):
                 continue
 

@@ -48,7 +48,6 @@ class BaseMixin(object):
             authenticated users.
         _public_fields: String names of fields meant to be displayed to
             non-authenticated users.
-        _nested_fields: ?
         _nested_relationships: String names of reference/relationship fields
             that should be included in JSON data of an object as full
             included documents. If reference/relationship field is not
@@ -57,7 +56,6 @@ class BaseMixin(object):
     """
     _public_fields = None
     _auth_fields = None
-    _nested_fields = None
     _nested_relationships = ()
     _backref_hooks = ()
 
@@ -85,12 +83,12 @@ class BaseMixin(object):
         signals.post_save.connect(cls._generate_on_creation, sender=model)
 
     @classmethod
-    def id_field(cls):
+    def pk_field(cls):
         return cls._meta['id_field']
 
     @classmethod
-    def id_field_type(cls):
-        return getattr(cls, cls.id_field()).__class__
+    def pk_field_type(cls):
+        return getattr(cls, cls.pk_field()).__class__
 
     @classmethod
     def check_fields_allowed(cls, fields):
@@ -148,7 +146,7 @@ class BaseMixin(object):
             :object: Sequence of :cls: instances on which query should be run.
             :params: Query parameters.
         """
-        id_name = cls.id_field()
+        id_name = cls.pk_field()
         key = '{}__in'.format(id_name)
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
@@ -177,18 +175,22 @@ class BaseMixin(object):
         _start = params.pop('_start', None)
         query_set = params.pop('query_set', None)
 
-        _count = '_count' in params; params.pop('_count', None)
-        _explain = '_explain' in params; params.pop('_explain', None)
+        _count = '_count' in params
+        params.pop('_count', None)
+        _explain = '_explain' in params
+        params.pop('_explain', None)
         __raise_on_empty = params.pop('__raise_on_empty', False)
 
         if query_set is None:
             query_set = cls.objects
 
         # Remove any __ legacy instructions from this point on
-        params = dictset(filter(lambda item: not item[0].startswith('__'), params.items()))
+        params = dictset(filter(
+            lambda item: not item[0].startswith('__'), params.items()))
 
         if __strict:
-            _check_fields = [f.strip('-+') for f in params.keys() + _fields + _sort]
+            _check_fields = [
+                f.strip('-+') for f in params.keys() + _fields + _sort]
             cls.check_fields_allowed(_check_fields)
         else:
             params = cls.filter_fields(params)
@@ -196,7 +198,7 @@ class BaseMixin(object):
         process_lists(params)
         process_bools(params)
 
-        #if param is _all then remove it
+        # If param is _all then remove it
         params.pop_by_values('_all')
 
         try:
@@ -210,7 +212,8 @@ class BaseMixin(object):
 
             _start, _limit = process_limit(_start, _page, _limit)
 
-            # Filtering by fields has to be the first thing to do on the query_set!
+            # Filtering by fields has to be the first thing to do on the
+            # query_set!
             query_set = cls.apply_fields(query_set, _fields)
             query_set = cls.apply_sort(query_set, _sort)
             query_set = query_set[_start:_start+_limit]
@@ -244,8 +247,9 @@ class BaseMixin(object):
 
     @classmethod
     def fields_to_query(cls):
-        query_fields = ['id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
-        return query_fields + cls._fields.keys() #+ cls._meta.get('indexes', [])
+        query_fields = [
+            'id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
+        return query_fields + cls._fields.keys()
 
     @classmethod
     def get_resource(cls, **params):
@@ -256,12 +260,13 @@ class BaseMixin(object):
 
     @classmethod
     def get(cls, **kw):
-        return cls.get_resource(__raise_on_empty=kw.pop('__raise', False), **kw)
+        return cls.get_resource(
+            __raise_on_empty=kw.pop('__raise', False), **kw)
 
     def unique_fields(self):
-        id_field = [self._meta['id_field']]
+        pk_field = [self.pk_field()]
         uniques = [e['fields'][0][0] for e in self._unique_with_indexes()]
-        return uniques + id_field
+        return uniques + pk_field
 
     @classmethod
     def get_or_create(cls, **params):
@@ -280,10 +285,10 @@ class BaseMixin(object):
         iter_fields = set(
             k for k, v in type(self)._fields.items()
             if isinstance(v, (mongo.DictField, mongo.ListField)))
-        id_field = self.id_field()
+        pk_field = self.pk_field()
 
         for key, value in params.items():
-            if key == id_field:  # can't change the primary key
+            if key == pk_field:  # can't change the primary key
                 continue
             if key in iter_fields:
                 self.update_iterables(value, key, unique=True, save=False)
@@ -319,9 +324,9 @@ class BaseMixin(object):
 
     @classmethod
     def get_by_ids(cls, ids, **params):
-        id_field = '{}__in'.format(cls.id_field())
+        pk_field = '{}__in'.format(cls.pk_field())
         params.update({
-            id_field: ids,
+            pk_field: ids,
             '_limit': len(ids),
         })
         return cls.get_collection(**params)
@@ -331,7 +336,7 @@ class BaseMixin(object):
             is_doc = isinstance(val, mongo.Document)
             include = key in self._nested_relationships
             if is_doc and not include:
-                val = getattr(val, val.id_field(), None)
+                val = getattr(val, val.pk_field(), None)
             return val
 
         _data = {}
@@ -347,7 +352,7 @@ class BaseMixin(object):
             _data[attr] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        _dict['id'] = getattr(self, self.id_field())
+        _dict['id'] = getattr(self, self.pk_field())
         return _dict
 
     def get_reference_documents(self):
@@ -430,7 +435,7 @@ class BaseMixin(object):
         if attr_name is None:
             attr_name = with_cls.__name__.lower()
 
-        with_fields = with_params.pop('_fields', [])
+        with_params.pop('_fields', [])
         with_objs = with_cls.get_by_ids(
             cls.objects.scalar(join_on),
             **with_params)
@@ -471,11 +476,13 @@ class BaseDocument(BaseMixin, mongo.Document):
         try:
             super(BaseDocument, self).save(*arg, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
-            if e.__class__ is mongo.OperationError and 'E11000' not in e.message:
+            if (e.__class__ is mongo.OperationError
+                    and 'E11000' not in e.message):
                 raise  # Other error, not duplicate
 
             raise JHTTPConflict(
-                detail='Resource `%s` already exists.' % self.__class__.__name__,
+                detail='Resource `{}` already exists.'.format(
+                    self.__class__.__name__),
                 extra={'data': e})
         else:
             if sync_backref:
@@ -496,11 +503,13 @@ class BaseDocument(BaseMixin, mongo.Document):
         try:
             return self._update(params, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
-            if e.__class__ is mongo.OperationError and 'E11000' not in e.message:
-                raise #other error, not duplicate
+            if (e.__class__ is mongo.OperationError
+                    and 'E11000' not in e.message):
+                raise  # other error, not duplicate
 
             raise JHTTPConflict(
-                detail='Resource `%s` already exists.' % self.__class__.__name__,
+                detail='Resource `{}` already exists.'.format(
+                    self.__class__.__name__),
                 extra={'data': e})
 
     def validate(self, *arg, **kw):
@@ -509,7 +518,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         except mongo.ValidationError as e:
             raise JHTTPBadRequest(
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
-                extra={'data':e})
+                extra={'data': e})
 
     def clean(self):
         """ Override `clean` method to apply each field's processors
