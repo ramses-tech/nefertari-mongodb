@@ -53,12 +53,12 @@ class TestDocumentHelpers(object):
 
 class TestBaseMixin(object):
 
-    def test_id_field(self):
+    def test_pk_field(self):
         class MyModel(docs.BaseDocument):
             my_id = fields.IdField()
             name = fields.StringField(primary_key=True)
 
-        assert MyModel.id_field() == 'name'
+        assert MyModel.pk_field() == 'name'
 
     def test_check_fields_allowed_not_existing_field(self):
         class MyModel(docs.BaseDocument):

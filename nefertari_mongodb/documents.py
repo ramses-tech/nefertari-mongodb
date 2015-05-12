@@ -83,12 +83,12 @@ class BaseMixin(object):
         signals.post_save.connect(cls._generate_on_creation, sender=model)
 
     @classmethod
-    def id_field(cls):
+    def pk_field(cls):
         return cls._meta['id_field']
 
     @classmethod
-    def id_field_type(cls):
-        return getattr(cls, cls.id_field()).__class__
+    def pk_field_type(cls):
+        return getattr(cls, cls.pk_field()).__class__
 
     @classmethod
     def check_fields_allowed(cls, fields):
@@ -146,7 +146,7 @@ class BaseMixin(object):
             :object: Sequence of :cls: instances on which query should be run.
             :params: Query parameters.
         """
-        id_name = cls.id_field()
+        id_name = cls.pk_field()
         key = '{}__in'.format(id_name)
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
@@ -257,9 +257,9 @@ class BaseMixin(object):
         return cls.get_resource(__raise_on_empty=kw.pop('__raise', False), **kw)
 
     def unique_fields(self):
-        id_field = [self._meta['id_field']]
+        pk_field = [self.pk_field()]
         uniques = [e['fields'][0][0] for e in self._unique_with_indexes()]
-        return uniques + id_field
+        return uniques + pk_field
 
     @classmethod
     def get_or_create(cls, **params):
@@ -278,10 +278,10 @@ class BaseMixin(object):
         iter_fields = set(
             k for k, v in type(self)._fields.items()
             if isinstance(v, (mongo.DictField, mongo.ListField)))
-        id_field = self.id_field()
+        pk_field = self.pk_field()
 
         for key, value in params.items():
-            if key == id_field:  # can't change the primary key
+            if key == pk_field:  # can't change the primary key
                 continue
             if key in iter_fields:
                 self.update_iterables(value, key, unique=True, save=False)
@@ -317,9 +317,9 @@ class BaseMixin(object):
 
     @classmethod
     def get_by_ids(cls, ids, **params):
-        id_field = '{}__in'.format(cls.id_field())
+        pk_field = '{}__in'.format(cls.pk_field())
         params.update({
-            id_field: ids,
+            pk_field: ids,
             '_limit': len(ids),
         })
         return cls.get_collection(**params)
@@ -329,7 +329,7 @@ class BaseMixin(object):
             is_doc = isinstance(val, mongo.Document)
             include = key in self._nested_relationships
             if is_doc and not include:
-                val = getattr(val, val.id_field(), None)
+                val = getattr(val, val.pk_field(), None)
             return val
 
         _data = {}
@@ -345,7 +345,7 @@ class BaseMixin(object):
             _data[attr] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        _dict['id'] = getattr(self, self.id_field())
+        _dict['id'] = getattr(self, self.pk_field())
         return _dict
 
     def get_reference_documents(self):
