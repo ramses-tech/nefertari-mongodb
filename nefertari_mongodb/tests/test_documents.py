@@ -3,8 +3,7 @@ from mock import patch, Mock
 
 import mongoengine as mongo
 from nefertari.utils.dictset import dictset
-from nefertari.json_httpexceptions import (
-    JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
+from nefertari.json_httpexceptions import JHTTPBadRequest
 
 from .. import documents as docs
 from .. import fields

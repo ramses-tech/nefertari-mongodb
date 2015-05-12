@@ -1,6 +1,5 @@
-import os
-
 from setuptools import setup, find_packages
+
 
 install_requires = [
     'mongoengine==0.9',
@@ -11,6 +10,7 @@ install_requires = [
     'pyramid_tm',
     'nefertari==0.2.1'
 ]
+
 
 setup(
     name='nefertari_mongodb',

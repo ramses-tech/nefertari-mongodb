@@ -590,10 +590,10 @@ class RelationshipField(ListField):
     def _register_deletion_hook(self, old_object, instance):
         """ Define and register deletion hook.
 
-        Hook removes `instance` from `new_object` using `self.reverse_rel_field`
-        as a field from which value should be removed.
-        `instance` is not actually used in hook - up-to-date value of `instance`
-        is passed to hook when it is run.
+        Hook removes `instance` from `new_object` using
+        `self.reverse_rel_field` as a field from which value should be removed.
+        `instance` is not actually used in hook - up-to-date value of
+        `instance` is passed to hook when it is run.
         """
         def _delete_from_old(old_obj, document, field_name):
             field_value = getattr(old_obj, field_name, None)
