@@ -9,9 +9,10 @@ log = logging.getLogger(__name__)
 def on_post_save(sender, document, **kw):
     """ Add new document to index or update existing. """
     from nefertari.elasticsearch import ES
-    if kw.get('created', False):
+    created = kw.get('created', False)
+    if created:
         ES(document.__class__.__name__).index(document.to_dict())
-    elif not kw.get('created', False) and document._get_changed_fields():
+    elif not created and document._get_changed_fields():
         document.reload()
         ES(document.__class__.__name__).index(document.to_dict())
 
