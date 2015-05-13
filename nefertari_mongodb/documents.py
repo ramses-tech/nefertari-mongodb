@@ -309,7 +309,7 @@ class BaseMixin(object):
     @classmethod
     def _update_many(cls, items, **params):
         for item in items:
-            item._update(params)
+            item.update(params)
 
     def __repr__(self):
         parts = ['%s:' % self.__class__.__name__]
