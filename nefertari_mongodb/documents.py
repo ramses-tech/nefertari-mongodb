@@ -68,9 +68,9 @@ class BaseMixin(object):
 
         Event handler is registered for class :model: and creates a new
         instance of :cls: with a field :set_to: set to an instance on
-        which event occured.
+        which the event occured.
 
-        Defined handler is setup as class method because mongoengine refuses
+        The handler is set up as class method because mongoengine refuses
         to call signal handlers if they aren't importable.
         """
         from mongoengine import signals
@@ -160,9 +160,9 @@ class BaseMixin(object):
     @classmethod
     def get_collection(cls, **params):
         """
-        params may include '_limit', '_page', '_sort', '_fields'
-        returns paginated and sorted query set
-        raises JHTTPBadRequest for bad values in params
+        Params may include '_limit', '_page', '_sort', '_fields'.
+        Returns paginated and sorted query set.
+        Raises JHTTPBadRequest for bad values in params.
         """
         log.debug('Get collection: {}, {}'.format(cls.__name__, params))
         params.pop('__confirmation', False)
@@ -463,9 +463,10 @@ class BaseDocument(BaseMixin, mongo.Document):
 
     def save(self, *arg, **kw):
         """
-        Force insert document in creation so unique constraits are respected.
-        This makes each collection POST be a 'create' operation as POST
-        should be and not 'update'.
+        Force insert document in creation so that unique constraits are
+        respected.
+        This makes each POST to a collection act as a 'create' operation
+        (as opposed to an 'update' for example).
         """
         kw['force_insert'] = self._created
 
@@ -493,8 +494,8 @@ class BaseDocument(BaseMixin, mongo.Document):
     def run_backref_hooks(self):
         """ Runs post-save backref hooks.
 
-        Hooks only include backref hooks which are one-time hooks
-        used to sync backrefs.
+        Includes backref hooks which are used one time only
+        to sync the backrefs.
         """
         for hook in self._backref_hooks:
             hook(document=self)
