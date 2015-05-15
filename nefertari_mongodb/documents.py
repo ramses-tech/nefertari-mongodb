@@ -10,7 +10,9 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset, DataProxy,
     to_dicts)
 from .metaclasses import ESMetaclass, DocumentMetaclass
-from .fields import DateTimeField, IntegerField, ForeignKeyField
+from .fields import (
+    DateTimeField, IntegerField, ForeignKeyField, RelationshipField,
+    DictField, ListField)
 
 
 log = logging.getLogger(__name__)
@@ -284,7 +286,8 @@ class BaseMixin(object):
         self.check_fields_allowed(params.keys())
         iter_fields = set(
             k for k, v in type(self)._fields.items()
-            if isinstance(v, (mongo.DictField, mongo.ListField)))
+            if isinstance(v, (DictField, ListField)) and
+            not isinstance(v, RelationshipField))
         pk_field = self.pk_field()
 
         for key, value in params.items():
