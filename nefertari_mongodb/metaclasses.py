@@ -8,23 +8,23 @@ from .fields import ReferenceField, RelationshipField
 class DocumentMetaclass(Document.my_metaclass):
     """ Custom metaclass that supports backreferences generation.
 
-    The feature if this metaclass is that it creates a backreference
-    for `ReferenceField` and `RelationshipField`(which is ListField of
-    ReferenceField internaly). Backrefs are created for 'other'(backref) side
-    of relationship, when the document class at 'original side'(side
-    which defines the original relationship) is being created.
+    The feature of this metaclass is that it creates a backreference
+    for `ReferenceField` and `RelationshipField`(which is a ListField of
+    ReferenceFields internally). Backrefs are created for the 'other'(backref)
+    side the of relationship when the document class at the 'origin side'
+    (the side which defines the original relationship) is being created.
 
-    Backreference is created if field, that defines a relationship, provides
-    additional set of arguments for backreference that are prefixed with
+    A backreference is created if the field defining a relationship provides
+    an additional set of arguments for backreference that are prefixed with
     `ReferenceField._backref_prefix`. Arguments are the same as for
-    `Relationship` except:
+    `Relationship`, except:
         1. `document` is not a valid argument for backref;
-        2. `name` backref argument must be provided and should be the name of
-           the backreference field that will be created on the other side of
-           relationship.
+        2. The `name` backref argument must be provided and should be the name
+            of the backreference field that will be created on the other side
+            of relationship.
 
     Follow inline comments in the code to understand how the process of backref
-    creation goes. Check `mongoengine/base/metaclasses.py` for the original
+    creation works. Check `mongoengine/base/metaclasses.py` for the original
     code of this metaclass.
     """
 
