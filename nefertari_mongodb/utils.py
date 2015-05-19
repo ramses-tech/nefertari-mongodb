@@ -1,5 +1,3 @@
-import mongoengine as mongo
-
 from .fields import (RelationshipField, ReferenceField)
 
 relationship_fields = (RelationshipField, ReferenceField)
@@ -15,12 +13,12 @@ def is_relationship_field(field, model_cls):
     return isinstance(field_obj, relationship_fields)
 
 
-def relationship_cls(field, model_cls):
-    """ Return class which is pointed to by relationship field
+def get_relationship_cls(field, model_cls):
+    """ Return class that is pointed to by relationship field
     `field` from model `model_cls`.
 
-    You have to make sure field exists and is a relationship
-    field by yourself. Use `is_relationship_field` for these purposes.
+    Make sure field exists and is a relationship
+    field manually. Use `is_relationship_field` for this.
     """
     field_obj = model_cls._fields[field]
     if isinstance(field_obj, RelationshipField):

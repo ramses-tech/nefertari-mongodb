@@ -10,7 +10,9 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset, DataProxy,
     to_dicts)
 from .metaclasses import ESMetaclass, DocumentMetaclass
-from .fields import DateTimeField, IntegerField, ForeignKeyField
+from .fields import (
+    DateTimeField, IntegerField, ForeignKeyField, RelationshipField,
+    DictField, ListField)
 
 
 log = logging.getLogger(__name__)
@@ -47,17 +49,15 @@ class BaseMixin(object):
         _auth_fields: String names of fields meant to be displayed to
             authenticated users.
         _public_fields: String names of fields meant to be displayed to
-            NOT authenticated users.
-        _nested_fields: ?
+            non-authenticated users.
         _nested_relationships: String names of reference/relationship fields
             that should be included in JSON data of an object as full
             included documents. If reference/relationship field is not
             present in this list, this field's value in JSON will be an
             object's ID or list of IDs.
     """
-    _auth_fields = None
     _public_fields = None
-    _nested_fields = None
+    _auth_fields = None
     _nested_relationships = ()
     _backref_hooks = ()
 
@@ -65,8 +65,32 @@ class BaseMixin(object):
     Q = mongo.Q
 
     @classmethod
-    def id_field(cls):
+    def autogenerate_for(cls, model, set_to):
+        """ Setup `post_save` event handler.
+
+        Event handler is registered for class :model: and creates a new
+        instance of :cls: with a field :set_to: set to an instance on
+        which the event occured.
+
+        The handler is set up as class method because mongoengine refuses
+        to call signal handlers if they aren't importable.
+        """
+        from mongoengine import signals
+
+        def generate(cls, sender, document, *args, **kw):
+            if kw.get('created', False):
+                cls(**{set_to: document}).save()
+
+        cls._generate_on_creation = classmethod(generate)
+        signals.post_save.connect(cls._generate_on_creation, sender=model)
+
+    @classmethod
+    def pk_field(cls):
         return cls._meta['id_field']
+
+    @classmethod
+    def pk_field_type(cls):
+        return getattr(cls, cls.pk_field()).__class__
 
     @classmethod
     def check_fields_allowed(cls, fields):
@@ -124,7 +148,7 @@ class BaseMixin(object):
             :object: Sequence of :cls: instances on which query should be run.
             :params: Query parameters.
         """
-        id_name = cls.id_field()
+        id_name = cls.pk_field()
         key = '{}__in'.format(id_name)
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
@@ -138,9 +162,9 @@ class BaseMixin(object):
     @classmethod
     def get_collection(cls, **params):
         """
-        params may include '_limit', '_page', '_sort', '_fields'
-        returns paginated and sorted query set
-        raises JHTTPBadRequest for bad values in params
+        Params may include '_limit', '_page', '_sort', '_fields'.
+        Returns paginated and sorted query set.
+        Raises JHTTPBadRequest for bad values in params.
         """
         log.debug('Get collection: {}, {}'.format(cls.__name__, params))
         params.pop('__confirmation', False)
@@ -151,18 +175,24 @@ class BaseMixin(object):
         _limit = params.pop('_limit', None)
         _page = params.pop('_page', None)
         _start = params.pop('_start', None)
+        query_set = params.pop('query_set', None)
 
-        _count = '_count' in params; params.pop('_count', None)
-        _explain = '_explain' in params; params.pop('_explain', None)
+        _count = '_count' in params
+        params.pop('_count', None)
+        _explain = '_explain' in params
+        params.pop('_explain', None)
         __raise_on_empty = params.pop('__raise_on_empty', False)
 
-        query_set = cls.objects
+        if query_set is None:
+            query_set = cls.objects
 
         # Remove any __ legacy instructions from this point on
-        params = dictset(filter(lambda item: not item[0].startswith('__'), params.items()))
+        params = dictset(filter(
+            lambda item: not item[0].startswith('__'), params.items()))
 
         if __strict:
-            _check_fields = [f.strip('-+') for f in params.keys() + _fields + _sort]
+            _check_fields = [
+                f.strip('-+') for f in params.keys() + _fields + _sort]
             cls.check_fields_allowed(_check_fields)
         else:
             params = cls.filter_fields(params)
@@ -170,7 +200,7 @@ class BaseMixin(object):
         process_lists(params)
         process_bools(params)
 
-        #if param is _all then remove it
+        # If param is _all then remove it
         params.pop_by_values('_all')
 
         try:
@@ -184,7 +214,8 @@ class BaseMixin(object):
 
             _start, _limit = process_limit(_start, _page, _limit)
 
-            # Filtering by fields has to be the first thing to do on the query_set!
+            # Filtering by fields has to be the first thing to do on the
+            # query_set!
             query_set = cls.apply_fields(query_set, _fields)
             query_set = cls.apply_sort(query_set, _sort)
             query_set = query_set[_start:_start+_limit]
@@ -218,8 +249,9 @@ class BaseMixin(object):
 
     @classmethod
     def fields_to_query(cls):
-        query_fields = ['id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
-        return query_fields + cls._fields.keys() #+ cls._meta.get('indexes', [])
+        query_fields = [
+            'id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
+        return query_fields + cls._fields.keys()
 
     @classmethod
     def get_resource(cls, **params):
@@ -230,12 +262,13 @@ class BaseMixin(object):
 
     @classmethod
     def get(cls, **kw):
-        return cls.get_resource(__raise_on_empty=kw.pop('__raise', False), **kw)
+        return cls.get_resource(
+            __raise_on_empty=kw.pop('__raise', False), **kw)
 
     def unique_fields(self):
-        id_field = [self._meta['id_field']]
+        pk_field = [self.pk_field()]
         uniques = [e['fields'][0][0] for e in self._unique_with_indexes()]
-        return uniques + id_field
+        return uniques + pk_field
 
     @classmethod
     def get_or_create(cls, **params):
@@ -251,11 +284,20 @@ class BaseMixin(object):
     def _update(self, params, **kw):
         process_bools(params)
         self.check_fields_allowed(params.keys())
-        id_field = self.id_field()
+        iter_fields = set(
+            k for k, v in type(self)._fields.items()
+            if isinstance(v, (DictField, ListField)) and
+            not isinstance(v, RelationshipField))
+        pk_field = self.pk_field()
+
         for key, value in params.items():
-            if key == id_field:  # can't change the primary key
+            if key == pk_field:  # can't change the primary key
                 continue
-            setattr(self, key, value)
+            if key in iter_fields:
+                self.update_iterables(value, key, unique=True, save=False)
+            else:
+                setattr(self, key, value)
+
         return self.save(**kw)
 
     @classmethod
@@ -270,7 +312,7 @@ class BaseMixin(object):
     @classmethod
     def _update_many(cls, items, **params):
         for item in items:
-            item._update(params)
+            item.update(params)
 
     def __repr__(self):
         parts = ['%s:' % self.__class__.__name__]
@@ -285,9 +327,9 @@ class BaseMixin(object):
 
     @classmethod
     def get_by_ids(cls, ids, **params):
-        id_field = '{}__in'.format(cls.id_field())
+        pk_field = '{}__in'.format(cls.pk_field())
         params.update({
-            id_field: ids,
+            pk_field: ids,
             '_limit': len(ids),
         })
         return cls.get_collection(**params)
@@ -297,7 +339,7 @@ class BaseMixin(object):
             is_doc = isinstance(val, mongo.Document)
             include = key in self._nested_relationships
             if is_doc and not include:
-                val = getattr(val, val.id_field(), None)
+                val = getattr(val, val.pk_field(), None)
             return val
 
         _data = {}
@@ -313,8 +355,7 @@ class BaseMixin(object):
             _data[attr] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        if not _dict.get('id'):
-            _dict['id'] = getattr(self, self.id_field())
+        _dict['id'] = getattr(self, self.pk_field())
         return _dict
 
     def get_reference_documents(self):
@@ -324,7 +365,8 @@ class BaseMixin(object):
             documents = to_dicts(model_cls.objects(**{key: self}))
             yield model_cls, documents
 
-    def update_iterables(self, params, attr, unique=False, value_type=None):
+    def update_iterables(self, params, attr, unique=False,
+                         value_type=None, save=True):
         is_dict = isinstance(type(self)._fields[attr], mongo.DictField)
         is_list = isinstance(type(self)._fields[attr], mongo.ListField)
 
@@ -353,12 +395,16 @@ class BaseMixin(object):
             # Set positive keys
             for key in positive:
                 final_value[unicode(key)] = params[key]
-            self.update({attr: final_value})
+
+            setattr(self, attr, final_value)
+            if save:
+                self.save()
 
         def update_list():
             final_value = getattr(self, attr, []) or []
             final_value = copy.deepcopy(final_value)
-            positive, negative = split_keys(params.keys())
+            keys = params.keys() if isinstance(params, dict) else params
+            positive, negative = split_keys(keys)
 
             if not (positive + negative):
                 raise JHTTPBadRequest('Missing params')
@@ -371,7 +417,9 @@ class BaseMixin(object):
             if negative:
                 final_value = list(set(final_value) - set(negative))
 
-            self.update({attr: final_value})
+            setattr(self, attr, final_value)
+            if save:
+                self.save()
 
         if is_dict:
             update_dict()
@@ -390,7 +438,7 @@ class BaseMixin(object):
         if attr_name is None:
             attr_name = with_cls.__name__.lower()
 
-        with_fields = with_params.pop('_fields', [])
+        with_params.pop('_fields', [])
         with_objs = with_cls.get_by_ids(
             cls.objects.scalar(join_on),
             **with_params)
@@ -418,9 +466,10 @@ class BaseDocument(BaseMixin, mongo.Document):
 
     def save(self, *arg, **kw):
         """
-        Force insert document in creation so unique constraits are respected.
-        This makes each collection POST be a 'create' operation as POST
-        should be and not 'update'.
+        Force insert document in creation so that unique constraits are
+        respected.
+        This makes each POST to a collection act as a 'create' operation
+        (as opposed to an 'update' for example).
         """
         kw['force_insert'] = self._created
 
@@ -431,11 +480,13 @@ class BaseDocument(BaseMixin, mongo.Document):
         try:
             super(BaseDocument, self).save(*arg, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
-            if e.__class__ is mongo.OperationError and 'E11000' not in e.message:
+            if (e.__class__ is mongo.OperationError
+                    and 'E11000' not in e.message):
                 raise  # Other error, not duplicate
 
             raise JHTTPConflict(
-                detail='Resource `%s` already exists.' % self.__class__.__name__,
+                detail='Resource `{}` already exists.'.format(
+                    self.__class__.__name__),
                 extra={'data': e})
         else:
             if sync_backref:
@@ -446,8 +497,8 @@ class BaseDocument(BaseMixin, mongo.Document):
     def run_backref_hooks(self):
         """ Runs post-save backref hooks.
 
-        Hooks only include backref hooks which are one-time hooks
-        used to sync backrefs.
+        Includes backref hooks which are used one time only
+        to sync the backrefs.
         """
         for hook in self._backref_hooks:
             hook(document=self)
@@ -456,11 +507,13 @@ class BaseDocument(BaseMixin, mongo.Document):
         try:
             return self._update(params, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
-            if e.__class__ is mongo.OperationError and 'E11000' not in e.message:
-                raise #other error, not duplicate
+            if (e.__class__ is mongo.OperationError
+                    and 'E11000' not in e.message):
+                raise  # other error, not duplicate
 
             raise JHTTPConflict(
-                detail='Resource `%s` already exists.' % self.__class__.__name__,
+                detail='Resource `{}` already exists.'.format(
+                    self.__class__.__name__),
                 extra={'data': e})
 
     def validate(self, *arg, **kw):
@@ -469,7 +522,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         except mongo.ValidationError as e:
             raise JHTTPBadRequest(
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
-                extra={'data':e})
+                extra={'data': e})
 
     def clean(self):
         """ Override `clean` method to apply each field's processors

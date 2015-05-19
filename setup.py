@@ -1,6 +1,5 @@
-import os
-
 from setuptools import setup, find_packages
+
 
 install_requires = [
     'mongoengine==0.9',
@@ -9,12 +8,13 @@ install_requires = [
     'elasticsearch',
     'python-dateutil',
     'pyramid_tm',
-    'nefertari==0.2.1'
+    'nefertari==0.3.0'
 ]
+
 
 setup(
     name='nefertari_mongodb',
-    version="0.1.1",
+    version="0.2.0",
     description='mongodb engine for nefertari',
     classifiers=[
         "Programming Language :: Python",

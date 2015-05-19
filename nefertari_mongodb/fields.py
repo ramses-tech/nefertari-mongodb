@@ -11,9 +11,9 @@ import dateutil.parser
 class BaseFieldMixin(object):
     """ Base mixin to implement a common interface for all mongo fields.
 
-    Is responsible for droping invalid field kwargs.
+    It is responsible for dropping invalid field kwargs.
     Subclasses must define `translate_kwargs` if some fields from
-    input kwargs have different name but same meaning.
+    input kwargs have different names but the same meaning.
 
     Attributes:
         _valid_kwargs: sequence of strings that represent valid kwargs
@@ -64,7 +64,7 @@ class BaseFieldMixin(object):
 
 class ProcessableMixin(object):
     """ Mixin that allows running callables on a value that
-    is being set to a field.
+    is being set on a field.
     """
     def __init__(self, *args, **kwargs):
         self.processors = kwargs.pop('processors', ())
@@ -159,9 +159,9 @@ class UnicodeTextField(UnicodeField):
 
 class ChoiceField(ProcessableMixin, fields.BaseField):
     """
-    As mongoengine does not have explicit ChoiceField, but all mongoengine
-    fields accept `choices` kwarg, this kind of proxy is defined.
-    It uses naive aproach: check the type of first choice and instantiate
+    As mongoengine does not have an explicit ChoiceField, but all mongoengine
+    fields accept `choices` kwarg, we need to define a proxy here.
+    It uses a naive aproach: check the type of first choice and instantiate
     a field of an appropriate type under the hood. Then translate all the
     attribute access to the underlying field.
     """
@@ -177,7 +177,7 @@ class ChoiceField(ProcessableMixin, fields.BaseField):
             self._real_field = FloatField(*args, **kwargs)
         else:
             raise ValueError(
-                'Choices must be one of following types: int, str, float, '
+                'Choices must be one of the following types: int, str, float, '
                 'unicode. All choices must be of one type.')
         self.__dict__.update(self._real_field.__dict__)
 
@@ -263,7 +263,7 @@ class PickleField(BinaryField):
 
     Data is pickled when saving to mongo and unpickled when retrieving
     from mongo.
-    `pickler` kwarg may be provided that may be any object with
+    The `pickler` kwarg may be provided that may reference any object with
     pickle-compatible `dumps` and `loads` methods. Defaults to python's
     built-in `pickle`.
     """
@@ -313,12 +313,13 @@ class IntervalField(IntegerField):
 class ListField(ProcessableMixin, BaseFieldMixin, fields.ListField):
     """ Custom ListField.
 
-    Custom part is the value validation. Choices are stored in a separate
-    attribute :self.list_choices: and validation checks if value (which is
-    a sequence) has values other than those specified in :self.list_choices:.
+    The custom part is the validation. Choices are stored in a separate
+    attribute :self.list_choices: and validation checks if the value (which is
+    a sequence) contains anything other than the choices specified in
+    :self.list_choices:.
 
-    Original mongoengine ListField validation requires value to be a sequence
-    but checks for value(sequence) inclusion into choices.
+    The original mongoengine ListField validation requires the value to be a
+    sequence but checks for value(sequence) inclusion in choices.
     """
     _valid_kwargs = ('field',)
 
@@ -354,30 +355,30 @@ class IdField(ProcessableMixin, BaseFieldMixin, fields.ObjectIdField):
 
 
 class ForeignKeyField(BaseFieldMixin, fields.StringField):
-    """ Field that references other document.
+    """ Field that references another document.
 
-    It is not meant to be used inside mongodb engine. It is added for
-    compatibility with sqla engine and is not displayed in JSON output.
+    It is not meant to be used inside the mongodb engine. It is added for
+    compatibility with sqla and is not displayed in JSON output.
     """
     _valid_kwargs = ()
 
 
 class ReferenceField(BaseFieldMixin, fields.ReferenceField):
-    """ Field that references other document.
+    """ Field that references another document.
 
-    Isn't meant to be used explicitly by user. To create relationship
-    fields, use `Relationship` constructor function.
+    This isn't meant to be used explicitly by the user. To create a
+    relationship field, use the `Relationship` constructor function.
 
-    When this field is not added to model's `_nested_relationships` this
-    field returns an ID of document that is being referenced. Otherwise
-    full document is included in JSON response.
+    When this field is not added to a model's `_nested_relationships`, this
+    field returns an ID of the document that is being referenced. Otherwise
+    the full document is included in JSON response.
 
-    This class is used in a `Relationship` function to generate kind of
+    This class is used in a `Relationship` function to generate a kind of
     one-to-one relationship. It is also used to create backreferences.
 
-    `reverse_rel_field`: string name of a field of the relationship on the
-        other side of relationship. Used in backreferences' generation so
-        fields on each side know the name of the field on the other side.
+    `reverse_rel_field`: string name of a field on the related document.
+        Used when generating backreferences so that fields on each side 
+        know the name of the field on the other side.
     """
     _valid_kwargs = ('document_type', 'dbref', 'reverse_delete_rule')
     _kwargs_prefix = 'ref_'
@@ -387,7 +388,7 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
     def __init__(self, *args, **kwargs):
         """ Init the field.
 
-        Also saves backref kwargs for future creation of backref.
+        Also saves backref kwargs for future creation of the backref.
 
         Expects:
             `document` or `<_kwargs_prefix>document`: mongoengine model name.
@@ -405,11 +406,11 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
         super(ReferenceField, self).__init__(*args, **kwargs)
 
     def _register_deletion_hook(self, old_object, instance):
-        """ Register backref hook to delete `instance` from the `old_object`s
-        field to which `instance` was related before by the backref.
+        """ Register a backref hook to delete the `instance` from the `old_object`'s
+        field to which the `instance` was related beforehand by the backref.
 
-        `instance` is either deleted from `old_object` field's collection or
-        `old_object`s field, responsible for relationship is set to None.
+        `instance` is either deleted from the `old_object` field's collection 
+        or `old_object`'s field, responsible for relationship is set to None.
         This depends on type of the field at `old_object`.
 
         `old_object.update` is run with `sync_backref=False` because
@@ -474,9 +475,9 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
     def __set__(self, instance, value):
         """ Custom __set__ method that updates linked relationships.
 
-        Updates linked relationship fields, if current field has
+        Updates linked relationship fields if the current field has a
         `reverse_rel_field` property set. By default this property is
-        only set when backreference is created.
+        only set when the backreference is created.
 
         If value is changed, `instance` is deleted from object it was related
         to before and is added to object it will be related to now - `value`.
@@ -507,7 +508,7 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
     def _get_referential_action(self, kwargs):
         """ Determine/translate generic rule name to mongoengine-specific rule.
 
-        Custom rules names are used here to make them look SQL-ish and
+        Custom rule names are used here to make them look SQL-ish and
         pretty at the same time.
 
         Mongoengine rules are:
@@ -546,12 +547,13 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
 class RelationshipField(ListField):
     """ Relationship field meant to be used to create one-to-many relationships.
 
-    Is used in `Relationship` function to generate one-to-many relationships.
-    Under the hood it is just a ListField containing ReferenceFields.
+    It is used in the `Relationship` function to generate one-to-many
+    relationships. Under the hood it is just a ListField containing
+    ReferenceFields.
 
-    `reverse_rel_field`: string name of the field of the relationship on the
-        other side of relationship. Used in backreferences' generation so
-        fields on each side know the name of the field on the other side.
+    `reverse_rel_field`: string name of a field on the related document.
+        Used when generating backreferences so that fields on each side 
+        know the name of the field on the other side.
     """
     _common_valid_kwargs = (
         'db_field', 'required', 'default', 'unique',
@@ -590,10 +592,10 @@ class RelationshipField(ListField):
     def _register_deletion_hook(self, old_object, instance):
         """ Define and register deletion hook.
 
-        Hook removes `instance` from `new_object` using `self.reverse_rel_field`
-        as a field from which value should be removed.
-        `instance` is not actually used in hook - up-to-date value of `instance`
-        is passed to hook when it is run.
+        Hook removes `instance` from `new_object` using
+        `self.reverse_rel_field` as a field from which value should be removed.
+        `instance` is not actually used in hook - up-to-date value of
+        `instance` is passed to hook when it is run.
         """
         def _delete_from_old(old_obj, document, field_name):
             field_value = getattr(old_obj, field_name, None)
@@ -609,12 +611,13 @@ class RelationshipField(ListField):
     def __set__(self, instance, value):
         """ Custom __set__ method that updates linked relationships.
 
-        Updates linked relationship fields, if current field has
+        Updates linked relationship fields if current field has
         `reverse_rel_field` property set. By default this property is
-        only set when backreference is created.
+        only set when a backreference is created.
 
-        If value is changed, `instance` is deleted from object it was related
-        to before and is added to object it will be related to now - `value`.
+        If the value is changed, `instance` is deleted from the object it was
+        related to before and is added to the object it will be related to now
+        - `value`.
         """
         super_set = super(RelationshipField, self).__set__
         if not self.reverse_rel_field:
@@ -654,18 +657,18 @@ class RelationshipField(ListField):
 
 
 def Relationship(**kwargs):
-    """ Relationship fields' generator.
+    """ Relationship field generator.
 
     Should be used to generate one-to-many and one-to-one relationships.
-    Provide `uselist` do say what kind of relation you expect to get.
-    If `uselist` is True, then RelationshipField is used and one-to-many
-    is created. Otherwise ReferenceField is used and one-to-one is created.
+    Provide `uselist` to indicate which kind of relation you expect to get.
+    If `uselist` is True, then RelationshipField is used and a one-to-many
+    is created. Otherwise ReferenceField is used and a one-to-one is created.
 
     This is the place where `ondelete` rules kwargs should be passed.
-    If you switched from SQLA engine, copy here the same `ondelete` rules
+    If you switched from the SQLA engine, copy here the same `ondelete` rules
     you passed to SQLA's `ForeignKeyField`.
-    `ondelete` kwargs may be kept in both fields with no side-effect when
-    switching between sqla-mongo engines.
+    `ondelete` kwargs may be kept in both fields with no side-effects when
+    switching between the sqla and mongo engines.
     """
     uselist = kwargs.pop('uselist', True)
     # many-to-one

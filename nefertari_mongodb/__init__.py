@@ -9,7 +9,7 @@ from .serializers import JSONEncoder, ESJSONSerializer
 from .metaclasses import ESMetaclass
 from .utils import (
     relationship_fields, is_relationship_field,
-    relationship_cls)
+    get_relationship_cls)
 from .fields import (
     BigIntegerField,
     BooleanField,
@@ -46,7 +46,7 @@ def includeme(config):
 
 
 def setup_database(config):
-    """ Setup db engine, db itself. Create db if not exists. """
+    """ Setup db engine and db itself. Create db if it doesn't exist. """
     settings = config.registry.settings
     mongoengine.connect(settings['mongodb.db'],
                         host=settings['mongodb.host'],
