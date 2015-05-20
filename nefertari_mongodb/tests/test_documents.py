@@ -17,6 +17,17 @@ class TestDocumentHelpers(object):
         assert docs.get_document_cls('MyModel') == 'foo'
         mock_get.assert_called_once_with('MyModel')
 
+    @patch.object(docs.mongo.base, 'common')
+    def test_get_document_classes(self, mock_common):
+        bar_mock = Mock(_meta={'abstract': False})
+        mock_common._document_registry = {
+            'Foo': Mock(_meta={'abstract': True}),
+            'Bar': bar_mock,
+            'Zoo': Mock(_meta={}),
+        }
+        document_classes = docs.get_document_classes()
+        assert document_classes == {'Bar': bar_mock}
+
     @patch.object(docs.mongo.document, 'get_document')
     def test_get_document_cls_error(self, mock_get):
         mock_get.side_effect = Exception()
@@ -51,6 +62,29 @@ class TestDocumentHelpers(object):
 
 
 class TestBaseMixin(object):
+
+    @patch('nefertari.elasticsearch.engine')
+    def test_get_es_mapping(self, mock_conv):
+        class MyModel(docs.BaseDocument):
+            id = fields.IdField()
+            name = fields.StringField(primary_key=True)
+            status = fields.ChoiceField(choices=['active'])
+            groups = fields.ListField(item_type=fields.IntegerField)
+        mapping = MyModel.get_es_mapping()
+        assert mapping == {
+            'mymodel': {
+                'properties': {
+                    '_type': {'type': 'string'},
+                    '_version': {'type': 'long'},
+                    'groups': {'type': 'long'},
+                    'id': {'type': 'string'},
+                    'name': {'type': 'string'},
+                    'status': {'type': 'string'},
+                    'updated_at': {'format': 'dateOptionalTime',
+                                   'type': 'date'}
+                }
+            }
+        }
 
     def test_pk_field(self):
         class MyModel(docs.BaseDocument):
