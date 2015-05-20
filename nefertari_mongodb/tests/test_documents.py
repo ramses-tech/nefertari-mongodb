@@ -66,7 +66,7 @@ class TestBaseMixin(object):
     @patch('nefertari.elasticsearch.engine')
     def test_get_es_mapping(self, mock_conv):
         class MyModel(docs.BaseDocument):
-            id = fields.IdField()
+            my_id = fields.IdField()
             name = fields.StringField(primary_key=True)
             status = fields.ChoiceField(choices=['active'])
             groups = fields.ListField(item_type=fields.IntegerField)
@@ -78,6 +78,7 @@ class TestBaseMixin(object):
                     '_version': {'type': 'long'},
                     'groups': {'type': 'long'},
                     'id': {'type': 'string'},
+                    'my_id': {'type': 'string'},
                     'name': {'type': 'string'},
                     'status': {'type': 'string'},
                     'updated_at': {'format': 'dateOptionalTime',

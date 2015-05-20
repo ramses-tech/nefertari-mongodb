@@ -127,10 +127,9 @@ class BaseMixin(object):
             }
         }
         fields = cls._fields.copy()
+        fields['id'] = fields.get(cls.pk_field())
 
         for name, field in fields.items():
-            if name == 'id':
-                field = fields.get(cls.pk_field())
             if isinstance(field, ChoiceField):
                 field = field._real_field
             field_type = type(field)
