@@ -12,7 +12,12 @@ from nefertari.utils import (
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .fields import (
     DateTimeField, IntegerField, ForeignKeyField, RelationshipField,
-    DictField, ListField)
+    DictField, ListField, ChoiceField, ReferenceField, StringField,
+    TextField, UnicodeField, UnicodeTextField,
+    IdField, BooleanField, BinaryField, DecimalField, FloatField,
+    BigIntegerField, SmallIntegerField, IntervalField, DateField,
+    TimeField
+)
 
 
 log = logging.getLogger(__name__)
@@ -23,6 +28,22 @@ def get_document_cls(name):
         return mongo.document.get_document(name)
     except:
         raise ValueError('`%s` does not exist in mongo db' % name)
+
+
+def get_document_classes():
+    """ Get all defined not abstract document classes
+
+    Class is assumed to be non-abstract if its `_meta['abstract']` is
+    defined and False.
+    """
+    document_classes = {}
+    registry = mongo.base.common._document_registry.copy()
+    for model_name, model_cls in registry.items():
+        _meta = getattr(model_cls, '_meta', {})
+        abstract = _meta.get('abstract', True)
+        if not abstract:
+            document_classes[model_name] = model_cls
+    return document_classes
 
 
 def process_lists(_dict):
@@ -40,6 +61,33 @@ def process_bools(_dict):
             _dict[new_k] = _dict.pop_bool_param(k)
 
     return _dict
+
+
+TYPES_MAP = {
+    StringField: {'type': 'string'},
+    TextField: {'type': 'string'},
+    UnicodeField: {'type': 'string'},
+    UnicodeTextField: {'type': 'string'},
+    mongo.fields.ObjectIdField: {'type': 'string'},
+    ForeignKeyField: {'type': 'string'},
+    IdField: {'type': 'string'},
+
+    BooleanField: {'type': 'boolean'},
+    BinaryField: {'type': 'object'},
+    DictField: {'type': 'object'},
+
+    DecimalField: {'type': 'double'},
+    FloatField: {'type': 'double'},
+
+    IntegerField: {'type': 'long'},
+    BigIntegerField: {'type': 'long'},
+    SmallIntegerField: {'type': 'long'},
+    IntervalField: {'type': 'long'},
+
+    DateTimeField: {'type': 'date', 'format': 'dateOptionalTime'},
+    DateField: {'type': 'date', 'format': 'dateOptionalTime'},
+    TimeField: {'type': 'date', 'format': 'HH:mm:ss'},
+}
 
 
 class BaseMixin(object):
@@ -63,6 +111,38 @@ class BaseMixin(object):
 
     _type = property(lambda self: self.__class__.__name__)
     Q = mongo.Q
+
+    @classmethod
+    def get_es_mapping(cls):
+        """ Generate ES mapping from model schema. """
+        from nefertari.elasticsearch import ES
+        ignored_types = set([
+            ReferenceField,
+            RelationshipField,
+        ])
+        properties = {}
+        mapping = {
+            ES.src2type(cls.__name__): {
+                'properties': properties
+            }
+        }
+        fields = cls._fields.copy()
+        fields['id'] = fields.get(cls.pk_field())
+
+        for name, field in fields.items():
+            if isinstance(field, ChoiceField):
+                field = field._real_field
+            field_type = type(field)
+            if field_type is ListField:
+                field_type = field.item_type
+            if field_type in ignored_types:
+                continue
+            if field_type not in TYPES_MAP:
+                continue
+            properties[name] = TYPES_MAP[field_type]
+
+        properties['_type'] = {'type': 'string'}
+        return mapping
 
     @classmethod
     def autogenerate_for(cls, model, set_to):

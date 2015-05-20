@@ -325,6 +325,7 @@ class ListField(ProcessableMixin, BaseFieldMixin, fields.ListField):
 
     def __init__(self, *args, **kwargs):
         self.list_choices = kwargs.pop('choices', None)
+        self.item_type = kwargs.pop('item_type')
         super(ListField, self).__init__(*args, **kwargs)
 
     def validate(self, value, **kwargs):
@@ -377,7 +378,7 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
     one-to-one relationship. It is also used to create backreferences.
 
     `reverse_rel_field`: string name of a field on the related document.
-        Used when generating backreferences so that fields on each side 
+        Used when generating backreferences so that fields on each side
         know the name of the field on the other side.
     """
     _valid_kwargs = ('document_type', 'dbref', 'reverse_delete_rule')
@@ -409,7 +410,7 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
         """ Register a backref hook to delete the `instance` from the `old_object`'s
         field to which the `instance` was related beforehand by the backref.
 
-        `instance` is either deleted from the `old_object` field's collection 
+        `instance` is either deleted from the `old_object` field's collection
         or `old_object`'s field, responsible for relationship is set to None.
         This depends on type of the field at `old_object`.
 
@@ -544,7 +545,7 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
         return kwargs
 
 
-class RelationshipField(ListField):
+class RelationshipField(ProcessableMixin, BaseFieldMixin, fields.ListField):
     """ Relationship field meant to be used to create one-to-many relationships.
 
     It is used in the `Relationship` function to generate one-to-many
@@ -552,9 +553,10 @@ class RelationshipField(ListField):
     ReferenceFields.
 
     `reverse_rel_field`: string name of a field on the related document.
-        Used when generating backreferences so that fields on each side 
+        Used when generating backreferences so that fields on each side
         know the name of the field on the other side.
     """
+    _valid_kwargs = ('field',)
     _common_valid_kwargs = (
         'db_field', 'required', 'default', 'unique',
         'unique_with', 'primary_key', 'validation', 'choices',
