@@ -533,6 +533,17 @@ class BaseMixin(object):
 
         return objs
 
+    def _is_modified(self):
+        """ Determine if instance is modified.
+
+        For instance to be marked as 'modified', it should:
+          * Have PK field set (not newly created)
+          * Have changed fields
+        """
+        pk_set = getattr(self, self.pk_field(), None) is not None
+        modified = self._get_changed_fields()
+        return modified and pk_set
+
 
 class BaseDocument(BaseMixin, mongo.Document):
     __metaclass__ = DocumentMetaclass
@@ -544,6 +555,11 @@ class BaseDocument(BaseMixin, mongo.Document):
         'abstract': True,
     }
 
+    def _bump_version(self):
+        if self._is_modified():
+            self.updated_at = datetime.utcnow()
+            self._version += 1
+
     def save(self, *arg, **kw):
         """
         Force insert document in creation so that unique constraits are
@@ -554,9 +570,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         kw['force_insert'] = self._created
 
         sync_backref = kw.pop('sync_backref', True)
-        if self._get_changed_fields():
-            self.updated_at = datetime.utcnow()
-            self._version += 1
+        self._bump_version()
         try:
             super(BaseDocument, self).save(*arg, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
@@ -605,10 +619,12 @@ class BaseDocument(BaseMixin, mongo.Document):
                 extra={'data': e})
 
     def clean(self):
-        """ Override `clean` method to apply each field's processors
-        before running validation.
+        """ Override `clean` method to apply field processors to changed
+        fields before running validation.
         """
-        for name, field in self._fields.items():
+        changed_fields = self._get_changed_fields()
+        for name in changed_fields:
+            field = self._fields[name]
             if hasattr(field, 'apply_processors'):
                 value = getattr(self, name)
                 value = field.apply_processors(value)
