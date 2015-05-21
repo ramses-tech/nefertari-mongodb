@@ -70,10 +70,10 @@ class ProcessableMixin(object):
         self.processors = kwargs.pop('processors', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
 
-    def apply_processors(self, value):
+    def apply_processors(self, instance, new_value):
         for proc in self.processors:
-            value = proc(value)
-        return value
+            new_value = proc(instance=instance, new_value=new_value)
+        return new_value
 
 
 class IntegerField(ProcessableMixin, BaseFieldMixin, fields.IntField):

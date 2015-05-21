@@ -156,13 +156,6 @@ class TestBaseMixin(object):
         query_set.count.assert_called_once_with(
             with_limit_and_skip=True)
 
-    def test_is_modified_id_not_set(self):
-        obj = docs.BaseMixin()
-        obj.pk_field = Mock(return_value='id')
-        obj._get_changed_fields = Mock(return_value=['name'])
-        obj.id = None
-        assert not obj._is_modified()
-
     def test_is_modified_no_changed_fields(self):
         obj = docs.BaseMixin()
         obj.pk_field = Mock(return_value='id')

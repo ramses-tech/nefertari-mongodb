@@ -540,9 +540,8 @@ class BaseMixin(object):
           * Have PK field set (not newly created)
           * Have changed fields
         """
-        pk_set = getattr(self, self.pk_field(), None) is not None
-        modified = self._get_changed_fields()
-        return modified and pk_set
+        modified = bool(self._get_changed_fields())
+        return modified
 
 
 class BaseDocument(BaseMixin, mongo.Document):
@@ -619,15 +618,14 @@ class BaseDocument(BaseMixin, mongo.Document):
                 extra={'data': e})
 
     def clean(self):
-        """ Override `clean` method to apply field processors to changed
+        """ Override `clean` method to apply field processors to all
         fields before running validation.
         """
-        changed_fields = self._get_changed_fields()
-        for name in changed_fields:
-            field = self._fields[name]
+        for name, field in self._fields.items():
             if hasattr(field, 'apply_processors'):
                 value = getattr(self, name)
-                value = field.apply_processors(value)
+                value = field.apply_processors(
+                    instance=self, new_value=value)
                 setattr(self, name, value)
 
 
