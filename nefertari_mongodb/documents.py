@@ -618,14 +618,21 @@ class BaseDocument(BaseMixin, mongo.Document):
                 extra={'data': e})
 
     def clean(self):
-        """ Override `clean` method to apply field processors to all
+        """ Override `clean` method to apply field processors to changed
         fields before running validation.
 
         Note that at this stage, field values are in the exact same state
         you posted/set them. E.g. if you set time_field='11/22/2000',
         self.time_field will be equal to '11/22/2000' here.
         """
-        for name, field in self._fields.items():
+        if self._created:
+            changed_fields = self._fields.keys()
+        else:
+            # Apply processors to updated fields only
+            changed_fields = self._get_changed_fields()
+
+        for name in changed_fields:
+            field = self._fields[name]
             if hasattr(field, 'apply_processors'):
                 new_value = getattr(self, name)
                 processed_value = field.apply_processors(
