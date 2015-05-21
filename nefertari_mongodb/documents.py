@@ -625,7 +625,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         you posted/set them. E.g. if you set time_field='11/22/2000',
         self.time_field will be equal to '11/22/2000' here.
         """
-        if self._created:
+        if self._created:  # New object
             changed_fields = self._fields.keys()
         else:
             # Apply processors to updated fields only
