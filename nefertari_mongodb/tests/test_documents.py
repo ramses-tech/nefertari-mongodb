@@ -206,3 +206,26 @@ class TestBaseDocument(object):
             call(instance=obj, new_value='asdasd'),
         ])
         assert obj.name == 'Foo'
+
+    def test_get_null_values(self):
+        class MyModel1(docs.BaseDocument):
+            name = fields.StringField(primary_key=True)
+
+        class MyModel2(docs.BaseDocument):
+            name = fields.StringField(primary_key=True)
+            models1 = fields.Relationship(
+                document='MyModel1', backref_name='model2')
+
+        assert MyModel1.get_null_values() == {
+            '_version': None,
+            'name': None,
+            'model2': None,
+            'updated_at': None,
+        }
+
+        assert MyModel2.get_null_values() == {
+            '_version': None,
+            'models1': [],
+            'name': None,
+            'updated_at': None,
+        }
