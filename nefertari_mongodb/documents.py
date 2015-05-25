@@ -10,6 +10,7 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset, DataProxy,
     to_dicts)
 from .metaclasses import ESMetaclass, DocumentMetaclass
+from .signals import on_bulk_update
 from .fields import (
     DateTimeField, IntegerField, ForeignKeyField, RelationshipField,
     DictField, ListField, ChoiceField, ReferenceField, StringField,
@@ -398,7 +399,18 @@ class BaseMixin(object):
 
     @classmethod
     def _update_many(cls, items, **params):
-        """ Update objects from :items: """
+        """ Update objects from :items:
+
+        If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
+        items.update() is called. Otherwise update is performed per-object.
+
+        'on_bulk_update' is called explicitly, because mongoengine does not
+        trigger any signals on QuerySet.update() call.
+        """
+        if isinstance(items, mongo.queryset.queryset.QuerySet):
+            items.update(**params)
+            on_bulk_update(cls, items)
+            return
         for item in items:
             item.update(params)
 
