@@ -386,11 +386,19 @@ class BaseMixin(object):
 
     @classmethod
     def _delete_many(cls, items):
+        """ Delete objects from :items:
+
+        If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
+        items.delete() is called. Otherwise deletion is performed per-object.
+        """
+        if isinstance(items, mongo.queryset.queryset.QuerySet):
+            return items.delete()
         for item in items:
             item.delete()
 
     @classmethod
     def _update_many(cls, items, **params):
+        """ Update objects from :items: """
         for item in items:
             item.update(params)
 
