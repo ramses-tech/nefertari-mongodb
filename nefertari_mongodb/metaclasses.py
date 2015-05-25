@@ -73,8 +73,8 @@ class DocumentMetaclass(Document.my_metaclass):
             # Add new field to `_fields_ordered`
             if (backref_name in target_cls._fields and
                     backref_name not in target_cls._fields_ordered):
-                target_cls._fields_ordered = sorted(
-                    target_cls._fields_ordered + (backref_name,))
+                fields = list(target_cls._fields_ordered) + [backref_name]
+                target_cls._fields_ordered = sorted(fields)
 
             # Set new field as an attribute of target class
             setattr(target_cls, backref_name, backref_field)
