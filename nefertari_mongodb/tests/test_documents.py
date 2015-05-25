@@ -1,5 +1,5 @@
 import pytest
-from mock import patch, Mock
+from mock import patch, Mock, call
 
 import mongoengine as mongo
 from nefertari.utils.dictset import dictset
@@ -155,3 +155,54 @@ class TestBaseMixin(object):
         docs.BaseDocument.count(query_set)
         query_set.count.assert_called_once_with(
             with_limit_and_skip=True)
+
+    def test_is_modified_no_changed_fields(self):
+        obj = docs.BaseMixin()
+        obj.pk_field = Mock(return_value='id')
+        obj._get_changed_fields = Mock(return_value=[])
+        obj.id = 1
+        assert not obj._is_modified()
+
+    def test_is_modified(self):
+        obj = docs.BaseMixin()
+        obj.pk_field = Mock(return_value='id')
+        obj._get_changed_fields = Mock(return_value=['name'])
+        obj.id = 1
+        assert obj._is_modified()
+
+
+class TestBaseDocument(object):
+
+    def test_clean_new_object(self):
+        processor = Mock(return_value='Foo')
+
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField(processors=[processor])
+            email = fields.StringField(processors=[processor])
+
+        obj = MyModel(name='a', email='b')
+        obj.clean()
+        processor.assert_has_calls([
+            call(instance=obj, new_value='b'),
+            call(instance=obj, new_value='a'),
+        ])
+        assert obj.name == 'Foo'
+        assert obj.email == 'Foo'
+
+    def test_clean_updated_object(self):
+        processor = Mock(return_value='Foo')
+
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField(processors=[processor])
+            email = fields.StringField(processors=[processor])
+
+        obj = MyModel(name='a', email='b')
+
+        obj.name = 'asdasd'
+        obj._get_changed_fields = Mock(return_value=['name'])
+        obj._created = False
+        obj.clean()
+        processor.assert_has_calls([
+            call(instance=obj, new_value='asdasd'),
+        ])
+        assert obj.name == 'Foo'

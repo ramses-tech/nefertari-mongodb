@@ -533,6 +533,16 @@ class BaseMixin(object):
 
         return objs
 
+    def _is_modified(self):
+        """ Determine if instance is modified.
+
+        For instance to be marked as 'modified', it should:
+          * Have PK field set (not newly created)
+          * Have changed fields
+        """
+        modified = bool(self._get_changed_fields())
+        return modified
+
 
 class BaseDocument(BaseMixin, mongo.Document):
     __metaclass__ = DocumentMetaclass
@@ -544,6 +554,11 @@ class BaseDocument(BaseMixin, mongo.Document):
         'abstract': True,
     }
 
+    def _bump_version(self):
+        if self._is_modified():
+            self.updated_at = datetime.utcnow()
+            self._version += 1
+
     def save(self, *arg, **kw):
         """
         Force insert document in creation so that unique constraits are
@@ -554,9 +569,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         kw['force_insert'] = self._created
 
         sync_backref = kw.pop('sync_backref', True)
-        if self._get_changed_fields():
-            self.updated_at = datetime.utcnow()
-            self._version += 1
+        self._bump_version()
         try:
             super(BaseDocument, self).save(*arg, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
@@ -605,14 +618,26 @@ class BaseDocument(BaseMixin, mongo.Document):
                 extra={'data': e})
 
     def clean(self):
-        """ Override `clean` method to apply each field's processors
-        before running validation.
+        """ Override `clean` method to apply field processors to changed
+        fields before running validation.
+
+        Note that at this stage, field values are in the exact same state
+        you posted/set them. E.g. if you set time_field='11/22/2000',
+        self.time_field will be equal to '11/22/2000' here.
         """
-        for name, field in self._fields.items():
+        if self._created:  # New object
+            changed_fields = self._fields.keys()
+        else:
+            # Apply processors to updated fields only
+            changed_fields = self._get_changed_fields()
+
+        for name in changed_fields:
+            field = self._fields[name]
             if hasattr(field, 'apply_processors'):
-                value = getattr(self, name)
-                value = field.apply_processors(value)
-                setattr(self, name, value)
+                new_value = getattr(self, name)
+                processed_value = field.apply_processors(
+                    instance=self, new_value=new_value)
+                setattr(self, name, processed_value)
 
 
 class ESBaseDocument(BaseDocument):
