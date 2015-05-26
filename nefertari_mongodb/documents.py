@@ -637,7 +637,7 @@ class BaseDocument(BaseMixin, mongo.Document):
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
                 extra={'data': e})
 
-    def clean(self):
+    def clean(self, force_all=False):
         """ Override `clean` method to apply field processors to changed
         fields before running validation.
 
@@ -645,7 +645,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         you posted/set them. E.g. if you set time_field='11/22/2000',
         self.time_field will be equal to '11/22/2000' here.
         """
-        if self._created:  # New object
+        if self._created or force_all:  # New object
             changed_fields = self._fields.keys()
         else:
             # Apply processors to updated fields only
