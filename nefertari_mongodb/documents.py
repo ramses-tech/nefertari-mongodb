@@ -12,7 +12,12 @@ from nefertari.utils import (
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .fields import (
     DateTimeField, IntegerField, ForeignKeyField, RelationshipField,
-    DictField, ListField)
+    DictField, ListField, ChoiceField, ReferenceField, StringField,
+    TextField, UnicodeField, UnicodeTextField,
+    IdField, BooleanField, BinaryField, DecimalField, FloatField,
+    BigIntegerField, SmallIntegerField, IntervalField, DateField,
+    TimeField
+)
 
 
 log = logging.getLogger(__name__)
@@ -23,6 +28,22 @@ def get_document_cls(name):
         return mongo.document.get_document(name)
     except:
         raise ValueError('`%s` does not exist in mongo db' % name)
+
+
+def get_document_classes():
+    """ Get all defined not abstract document classes
+
+    Class is assumed to be non-abstract if its `_meta['abstract']` is
+    defined and False.
+    """
+    document_classes = {}
+    registry = mongo.base.common._document_registry.copy()
+    for model_name, model_cls in registry.items():
+        _meta = getattr(model_cls, '_meta', {})
+        abstract = _meta.get('abstract', True)
+        if not abstract:
+            document_classes[model_name] = model_cls
+    return document_classes
 
 
 def process_lists(_dict):
@@ -40,6 +61,33 @@ def process_bools(_dict):
             _dict[new_k] = _dict.pop_bool_param(k)
 
     return _dict
+
+
+TYPES_MAP = {
+    StringField: {'type': 'string'},
+    TextField: {'type': 'string'},
+    UnicodeField: {'type': 'string'},
+    UnicodeTextField: {'type': 'string'},
+    mongo.fields.ObjectIdField: {'type': 'string'},
+    ForeignKeyField: {'type': 'string'},
+    IdField: {'type': 'string'},
+
+    BooleanField: {'type': 'boolean'},
+    BinaryField: {'type': 'object'},
+    DictField: {'type': 'object'},
+
+    DecimalField: {'type': 'double'},
+    FloatField: {'type': 'double'},
+
+    IntegerField: {'type': 'long'},
+    BigIntegerField: {'type': 'long'},
+    SmallIntegerField: {'type': 'long'},
+    IntervalField: {'type': 'long'},
+
+    DateTimeField: {'type': 'date', 'format': 'dateOptionalTime'},
+    DateField: {'type': 'date', 'format': 'dateOptionalTime'},
+    TimeField: {'type': 'date', 'format': 'HH:mm:ss'},
+}
 
 
 class BaseMixin(object):
@@ -63,6 +111,38 @@ class BaseMixin(object):
 
     _type = property(lambda self: self.__class__.__name__)
     Q = mongo.Q
+
+    @classmethod
+    def get_es_mapping(cls):
+        """ Generate ES mapping from model schema. """
+        from nefertari.elasticsearch import ES
+        ignored_types = set([
+            ReferenceField,
+            RelationshipField,
+        ])
+        properties = {}
+        mapping = {
+            ES.src2type(cls.__name__): {
+                'properties': properties
+            }
+        }
+        fields = cls._fields.copy()
+        fields['id'] = fields.get(cls.pk_field())
+
+        for name, field in fields.items():
+            if isinstance(field, ChoiceField):
+                field = field._real_field
+            field_type = type(field)
+            if field_type is ListField:
+                field_type = field.item_type
+            if field_type in ignored_types:
+                continue
+            if field_type not in TYPES_MAP:
+                continue
+            properties[name] = TYPES_MAP[field_type]
+
+        properties['_type'] = {'type': 'string'}
+        return mapping
 
     @classmethod
     def autogenerate_for(cls, model, set_to):
@@ -297,7 +377,6 @@ class BaseMixin(object):
                 self.update_iterables(value, key, unique=True, save=False)
             else:
                 setattr(self, key, value)
-
         return self.save(**kw)
 
     @classmethod
@@ -333,6 +412,21 @@ class BaseMixin(object):
             '_limit': len(ids),
         })
         return cls.get_collection(**params)
+
+    @classmethod
+    def get_null_values(cls):
+        """ Get null values of :cls: fields. """
+        null_values = {}
+        field_names = cls._fields.keys()
+        for name in field_names:
+            field = getattr(cls, name)
+            if isinstance(field, RelationshipField):
+                value = []
+            else:
+                value = None
+            null_values[name] = value
+        null_values.pop('id', None)
+        return null_values
 
     def to_dict(self, **kwargs):
         def _process(key, val):
@@ -383,10 +477,13 @@ class BaseMixin(object):
                     pos_keys.append(key.strip())
             return pos_keys, neg_keys
 
-        def update_dict():
+        def update_dict(update_params):
             final_value = getattr(self, attr, {}) or {}
             final_value = final_value.copy()
-            positive, negative = split_keys(params.keys())
+            if update_params is None:
+                update_params = {
+                    '-' + key: val for key, val in final_value.items()}
+            positive, negative = split_keys(update_params.keys())
 
             # Pop negative keys
             for key in negative:
@@ -394,16 +491,19 @@ class BaseMixin(object):
 
             # Set positive keys
             for key in positive:
-                final_value[unicode(key)] = params[key]
+                final_value[unicode(key)] = update_params[key]
 
             setattr(self, attr, final_value)
             if save:
                 self.save()
 
-        def update_list():
+        def update_list(update_params):
             final_value = getattr(self, attr, []) or []
             final_value = copy.deepcopy(final_value)
-            keys = params.keys() if isinstance(params, dict) else params
+            if update_params is None:
+                update_params = ['-' + val for val in final_value]
+            keys = (update_params.keys() if isinstance(update_params, dict)
+                    else update_params)
             positive, negative = split_keys(keys)
 
             if not (positive + negative):
@@ -422,10 +522,10 @@ class BaseMixin(object):
                 self.save()
 
         if is_dict:
-            update_dict()
+            update_dict(params)
 
         elif is_list:
-            update_list()
+            update_list(params)
 
     @classmethod
     def expand_with(cls, with_cls, join_on=None, attr_name=None, params={},
@@ -453,6 +553,16 @@ class BaseMixin(object):
 
         return objs
 
+    def _is_modified(self):
+        """ Determine if instance is modified.
+
+        For instance to be marked as 'modified', it should:
+          * Have PK field set (not newly created)
+          * Have changed fields
+        """
+        modified = bool(self._get_changed_fields())
+        return modified
+
 
 class BaseDocument(BaseMixin, mongo.Document):
     __metaclass__ = DocumentMetaclass
@@ -464,6 +574,11 @@ class BaseDocument(BaseMixin, mongo.Document):
         'abstract': True,
     }
 
+    def _bump_version(self):
+        if self._is_modified():
+            self.updated_at = datetime.utcnow()
+            self._version += 1
+
     def save(self, *arg, **kw):
         """
         Force insert document in creation so that unique constraits are
@@ -474,9 +589,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         kw['force_insert'] = self._created
 
         sync_backref = kw.pop('sync_backref', True)
-        if self._get_changed_fields():
-            self.updated_at = datetime.utcnow()
-            self._version += 1
+        self._bump_version()
         try:
             super(BaseDocument, self).save(*arg, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
@@ -524,15 +637,27 @@ class BaseDocument(BaseMixin, mongo.Document):
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
                 extra={'data': e})
 
-    def clean(self):
-        """ Override `clean` method to apply each field's processors
-        before running validation.
+    def clean(self, force_all=False):
+        """ Override `clean` method to apply field processors to changed
+        fields before running validation.
+
+        Note that at this stage, field values are in the exact same state
+        you posted/set them. E.g. if you set time_field='11/22/2000',
+        self.time_field will be equal to '11/22/2000' here.
         """
-        for name, field in self._fields.items():
+        if self._created or force_all:  # New object
+            changed_fields = self._fields.keys()
+        else:
+            # Apply processors to updated fields only
+            changed_fields = self._get_changed_fields()
+
+        for name in changed_fields:
+            field = self._fields[name]
             if hasattr(field, 'apply_processors'):
-                value = getattr(self, name)
-                value = field.apply_processors(value)
-                setattr(self, name, value)
+                new_value = getattr(self, name)
+                processed_value = field.apply_processors(
+                    instance=self, new_value=new_value)
+                setattr(self, name, processed_value)
 
 
 class ESBaseDocument(BaseDocument):

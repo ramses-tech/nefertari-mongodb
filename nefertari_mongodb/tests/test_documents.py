@@ -1,5 +1,5 @@
 import pytest
-from mock import patch, Mock
+from mock import patch, Mock, call
 
 import mongoengine as mongo
 from nefertari.utils.dictset import dictset
@@ -16,6 +16,17 @@ class TestDocumentHelpers(object):
         mock_get.return_value = 'foo'
         assert docs.get_document_cls('MyModel') == 'foo'
         mock_get.assert_called_once_with('MyModel')
+
+    @patch.object(docs.mongo.base, 'common')
+    def test_get_document_classes(self, mock_common):
+        bar_mock = Mock(_meta={'abstract': False})
+        mock_common._document_registry = {
+            'Foo': Mock(_meta={'abstract': True}),
+            'Bar': bar_mock,
+            'Zoo': Mock(_meta={}),
+        }
+        document_classes = docs.get_document_classes()
+        assert document_classes == {'Bar': bar_mock}
 
     @patch.object(docs.mongo.document, 'get_document')
     def test_get_document_cls_error(self, mock_get):
@@ -51,6 +62,30 @@ class TestDocumentHelpers(object):
 
 
 class TestBaseMixin(object):
+
+    @patch('nefertari.elasticsearch.engine')
+    def test_get_es_mapping(self, mock_conv):
+        class MyModel(docs.BaseDocument):
+            my_id = fields.IdField()
+            name = fields.StringField(primary_key=True)
+            status = fields.ChoiceField(choices=['active'])
+            groups = fields.ListField(item_type=fields.IntegerField)
+        mapping = MyModel.get_es_mapping()
+        assert mapping == {
+            'mymodel': {
+                'properties': {
+                    '_type': {'type': 'string'},
+                    '_version': {'type': 'long'},
+                    'groups': {'type': 'long'},
+                    'id': {'type': 'string'},
+                    'my_id': {'type': 'string'},
+                    'name': {'type': 'string'},
+                    'status': {'type': 'string'},
+                    'updated_at': {'format': 'dateOptionalTime',
+                                   'type': 'date'}
+                }
+            }
+        }
 
     def test_pk_field(self):
         class MyModel(docs.BaseDocument):
@@ -120,3 +155,77 @@ class TestBaseMixin(object):
         docs.BaseDocument.count(query_set)
         query_set.count.assert_called_once_with(
             with_limit_and_skip=True)
+
+    def test_is_modified_no_changed_fields(self):
+        obj = docs.BaseMixin()
+        obj.pk_field = Mock(return_value='id')
+        obj._get_changed_fields = Mock(return_value=[])
+        obj.id = 1
+        assert not obj._is_modified()
+
+    def test_is_modified(self):
+        obj = docs.BaseMixin()
+        obj.pk_field = Mock(return_value='id')
+        obj._get_changed_fields = Mock(return_value=['name'])
+        obj.id = 1
+        assert obj._is_modified()
+
+
+class TestBaseDocument(object):
+
+    def test_clean_new_object(self):
+        processor = Mock(return_value='Foo')
+
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField(processors=[processor])
+            email = fields.StringField(processors=[processor])
+
+        obj = MyModel(name='a', email='b')
+        obj.clean()
+        processor.assert_has_calls([
+            call(instance=obj, new_value='b'),
+            call(instance=obj, new_value='a'),
+        ])
+        assert obj.name == 'Foo'
+        assert obj.email == 'Foo'
+
+    def test_clean_updated_object(self):
+        processor = Mock(return_value='Foo')
+
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField(processors=[processor])
+            email = fields.StringField(processors=[processor])
+
+        obj = MyModel(name='a', email='b')
+
+        obj.name = 'asdasd'
+        obj._get_changed_fields = Mock(return_value=['name'])
+        obj._created = False
+        obj.clean()
+        processor.assert_has_calls([
+            call(instance=obj, new_value='asdasd'),
+        ])
+        assert obj.name == 'Foo'
+
+    def test_get_null_values(self):
+        class MyModel1(docs.BaseDocument):
+            name = fields.StringField(primary_key=True)
+
+        class MyModel2(docs.BaseDocument):
+            name = fields.StringField(primary_key=True)
+            models1 = fields.Relationship(
+                document='MyModel1', backref_name='model2')
+
+        assert MyModel1.get_null_values() == {
+            '_version': None,
+            'name': None,
+            'model2': None,
+            'updated_at': None,
+        }
+
+        assert MyModel2.get_null_values() == {
+            '_version': None,
+            'models1': [],
+            'name': None,
+            'updated_at': None,
+        }

@@ -1,6 +1,8 @@
 Changelog
 =========
 
+* :release:`0.2.1 <2015-05-27>`
+
 * :release:`0.2.0 <2015-04-07>`
 * :feature:`-` Relationship indexing
 
