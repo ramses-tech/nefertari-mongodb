@@ -381,10 +381,6 @@ class BaseMixin(object):
         return self.save(**kw)
 
     @classmethod
-    def _delete(cls, **params):
-        cls.objects(**params).delete()
-
-    @classmethod
     def _delete_many(cls, items):
         """ Delete objects from :items:
 
@@ -656,6 +652,9 @@ class BaseDocument(BaseMixin, mongo.Document):
             raise JHTTPBadRequest(
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
                 extra={'data': e})
+
+    def delete(self):
+        super(BaseDocument, self).delete()
 
     def clean(self, force_all=False):
         """ Override `clean` method to apply field processors to changed
