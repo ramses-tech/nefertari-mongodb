@@ -23,7 +23,7 @@ def on_post_delete(sender, document, **kw):
     ES(document.__class__.__name__).delete(document.id)
 
 
-def on_bulk_update(model_cls, objects):
+def on_bulk_update(model_cls, objects, refresh_index=False):
     if not getattr(model_cls, '_index_enabled', False):
         return
 

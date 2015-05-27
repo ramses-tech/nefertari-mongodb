@@ -381,19 +381,21 @@ class BaseMixin(object):
         return self.save(**kw)
 
     @classmethod
-    def _delete_many(cls, items):
+    def _delete_many(cls, items, refresh_index=False):
         """ Delete objects from :items:
 
         If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
         items.delete() is called. Otherwise deletion is performed per-object.
         """
         if isinstance(items, mongo.queryset.queryset.QuerySet):
+            items._refresh_index = refresh_index
             return items.delete()
         for item in items:
+            item._refresh_index = refresh_index
             item.delete()
 
     @classmethod
-    def _update_many(cls, items, **params):
+    def _update_many(cls, items, refresh_index=False, **params):
         """ Update objects from :items:
 
         If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
@@ -404,9 +406,10 @@ class BaseMixin(object):
         """
         if isinstance(items, mongo.queryset.queryset.QuerySet):
             items.update(**params)
-            on_bulk_update(cls, items)
+            on_bulk_update(cls, items, refresh_index=refresh_index)
             return
         for item in items:
+            item._refresh_index = refresh_index
             item.update(params)
 
     def __repr__(self):
@@ -476,7 +479,8 @@ class BaseMixin(object):
             yield model_cls, documents
 
     def update_iterables(self, params, attr, unique=False,
-                         value_type=None, save=True):
+                         value_type=None, save=True,
+                         refresh_index=False):
         is_dict = isinstance(type(self)._fields[attr], mongo.DictField)
         is_list = isinstance(type(self)._fields[attr], mongo.ListField)
 
@@ -511,7 +515,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save()
+                self.save(refresh_index=refresh_index)
 
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
@@ -535,7 +539,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save()
+                self.save(refresh_index=refresh_index)
 
         if is_dict:
             update_dict(params)
@@ -605,6 +609,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         kw['force_insert'] = self._created
 
         sync_backref = kw.pop('sync_backref', True)
+        self._refresh_index = kw.pop('refresh_index', False)
         self._bump_version()
         try:
             super(BaseDocument, self).save(*arg, **kw)
@@ -633,6 +638,7 @@ class BaseDocument(BaseMixin, mongo.Document):
             hook(document=self)
 
     def update(self, params, **kw):
+        # refresh_index is passed to _update and then to save
         try:
             return self._update(params, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
@@ -653,7 +659,8 @@ class BaseDocument(BaseMixin, mongo.Document):
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
                 extra={'data': e})
 
-    def delete(self):
+    def delete(self, refresh_index=False):
+        self._refresh_index = refresh_index
         super(BaseDocument, self).delete()
 
     def clean(self, force_all=False):
