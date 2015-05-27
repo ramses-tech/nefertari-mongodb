@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 def on_post_save(sender, document, **kw):
     """ Add new document to index or update existing. """
     from nefertari.elasticsearch import ES
-    refresh_index = getattr(document, '_refresh_index', False)
+    refresh_index = getattr(document, '_refresh_index', None)
     created = kw.get('created', False)
     if created:
         ES(document.__class__.__name__).index(
@@ -23,12 +23,12 @@ def on_post_save(sender, document, **kw):
 
 def on_post_delete(sender, document, **kw):
     from nefertari.elasticsearch import ES
-    refresh_index = getattr(document, '_refresh_index', False)
+    refresh_index = getattr(document, '_refresh_index', None)
     ES(document.__class__.__name__).delete(
         document.id, refresh_index=refresh_index)
 
 
-def on_bulk_update(model_cls, objects, refresh_index=False):
+def on_bulk_update(model_cls, objects, refresh_index=None):
     if not getattr(model_cls, '_index_enabled', False):
         return
 

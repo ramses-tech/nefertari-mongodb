@@ -381,21 +381,13 @@ class BaseMixin(object):
         return self.save(**kw)
 
     @classmethod
-    def _delete_many(cls, items, refresh_index=False):
-        """ Delete objects from :items:
-
-        If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
-        items.delete() is called. Otherwise deletion is performed per-object.
-        """
-        if isinstance(items, mongo.queryset.queryset.QuerySet):
-            items._refresh_index = refresh_index
-            return items.delete()
+    def _delete_many(cls, items, refresh_index=None):
+        """ Delete objects from :items: """
         for item in items:
-            item._refresh_index = refresh_index
-            item.delete()
+            item.delete(refresh_index=refresh_index)
 
     @classmethod
-    def _update_many(cls, items, refresh_index=False, **params):
+    def _update_many(cls, items, refresh_index=None, **params):
         """ Update objects from :items:
 
         If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
@@ -409,8 +401,7 @@ class BaseMixin(object):
             on_bulk_update(cls, items, refresh_index=refresh_index)
             return
         for item in items:
-            item._refresh_index = refresh_index
-            item.update(params)
+            item.update(params, refresh_index=refresh_index)
 
     def __repr__(self):
         parts = ['%s:' % self.__class__.__name__]
@@ -480,7 +471,7 @@ class BaseMixin(object):
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
-                         refresh_index=False):
+                         refresh_index=None):
         is_dict = isinstance(type(self)._fields[attr], mongo.DictField)
         is_list = isinstance(type(self)._fields[attr], mongo.ListField)
 
@@ -609,7 +600,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         kw['force_insert'] = self._created
 
         sync_backref = kw.pop('sync_backref', True)
-        self._refresh_index = kw.pop('refresh_index', False)
+        self._refresh_index = kw.pop('refresh_index', None)
         self._bump_version()
         try:
             super(BaseDocument, self).save(*arg, **kw)
@@ -659,9 +650,9 @@ class BaseDocument(BaseMixin, mongo.Document):
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
                 extra={'data': e})
 
-    def delete(self, refresh_index=False):
+    def delete(self, refresh_index=None, **kwargs):
         self._refresh_index = refresh_index
-        super(BaseDocument, self).delete()
+        super(BaseDocument, self).delete(**kwargs)
 
     def clean(self, force_all=False):
         """ Override `clean` method to apply field processors to changed
