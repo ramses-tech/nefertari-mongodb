@@ -631,33 +631,60 @@ class BaseDocument(BaseMixin, mongo.Document):
 
     def validate(self, *arg, **kw):
         try:
-            return super(BaseDocument, self).validate(*arg, **kw)
+            self.apply_pre_processors()
+            super(BaseDocument, self).validate(*arg, **kw)
+            self.apply_post_processors()
         except mongo.ValidationError as e:
             raise JHTTPBadRequest(
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
                 extra={'data': e})
 
-    def clean(self, force_all=False):
-        """ Override `clean` method to apply field processors to changed
-        fields before running validation.
+    def apply_processors(self, field_names=None, pre=False, post=False):
+        """ Apply processors to fields with :field_names: names.
+
+        Arguments:
+          :field_names: List of string names of changed fields.
+          :pre: Boolean indicating whether to apply pre-processors.
+          :post: Boolean indicating whether to apply post-processors.
+        """
+        if field_names is None:
+            field_names = self._fields.keys()
+
+        for name in field_names:
+            field = self._fields[name]
+            if hasattr(field, 'apply_processors'):
+                new_value = getattr(self, name)
+                processed_value = field.apply_processors(
+                    instance=self, new_value=new_value,
+                    pre=pre, post=post)
+                setattr(self, name, processed_value)
+
+    def apply_pre_processors(self):
+        """ Determine changed fields and run `self.apply_processors` to
+        apply needed processors.
 
         Note that at this stage, field values are in the exact same state
         you posted/set them. E.g. if you set time_field='11/22/2000',
         self.time_field will be equal to '11/22/2000' here.
         """
-        if self._created or force_all:  # New object
+        if self._created:  # New object
             changed_fields = self._fields.keys()
         else:
             # Apply processors to updated fields only
             changed_fields = self._get_changed_fields()
 
-        for name in changed_fields:
-            field = self._fields[name]
-            if hasattr(field, 'apply_processors'):
-                new_value = getattr(self, name)
-                processed_value = field.apply_processors(
-                    instance=self, new_value=new_value)
-                setattr(self, name, processed_value)
+        self._fields_to_process = changed_fields
+        self.apply_processors(changed_fields, pre=True)
+
+    def apply_post_processors(self):
+        """ Run `self.apply_processors` with field names determined by
+        `self.apply_pre_processors`.
+
+        Note that at this stage, field values are in the exact same state
+        you posted/set them. E.g. if you set time_field='11/22/2000',
+        self.time_field will be equal to '11/22/2000' here.
+        """
+        self.apply_processors(self._fields_to_process, post=True)
 
 
 class ESBaseDocument(BaseDocument):
