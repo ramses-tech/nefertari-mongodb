@@ -177,8 +177,8 @@ class TestBaseDocument(object):
         processor = Mock(return_value='Foo')
 
         class MyModel(docs.BaseDocument):
-            name = fields.StringField(processors=[processor])
-            email = fields.StringField(processors=[processor])
+            name = fields.StringField(pre_processors=[processor])
+            email = fields.StringField(pre_processors=[processor])
 
         obj = MyModel(name='a', email='b')
         obj.clean()
@@ -193,8 +193,8 @@ class TestBaseDocument(object):
         processor = Mock(return_value='Foo')
 
         class MyModel(docs.BaseDocument):
-            name = fields.StringField(processors=[processor])
-            email = fields.StringField(processors=[processor])
+            name = fields.StringField(pre_processors=[processor])
+            email = fields.StringField(pre_processors=[processor])
 
         obj = MyModel(name='a', email='b')
 
