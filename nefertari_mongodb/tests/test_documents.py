@@ -185,7 +185,7 @@ class TestBaseDocument(object):
         processor.assert_has_calls([
             call(instance=obj, new_value='b'),
             call(instance=obj, new_value='a'),
-        ])
+        ], any_order=True)
         assert obj.name == 'Foo'
         assert obj.email == 'Foo'
 
@@ -204,7 +204,7 @@ class TestBaseDocument(object):
         obj.clean()
         processor.assert_has_calls([
             call(instance=obj, new_value='asdasd'),
-        ])
+        ], any_order=True)
         assert obj.name == 'Foo'
 
     def test_get_null_values(self):

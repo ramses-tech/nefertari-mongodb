@@ -8,7 +8,8 @@ install_requires = [
     'elasticsearch',
     'python-dateutil',
     'pyramid_tm',
-    'nefertari==0.3.1'
+    'nefertari==0.3.1',
+    'six',
 ]
 
 
