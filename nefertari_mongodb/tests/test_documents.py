@@ -173,15 +173,18 @@ class TestBaseMixin(object):
 
 class TestBaseDocument(object):
 
-    def test_clean_new_object(self):
+    def test_apply_before_validation_new_object(self):
         processor = Mock(return_value='Foo')
+        processor2 = Mock(return_value='BarFoo')
 
         class MyModel(docs.BaseDocument):
-            name = fields.StringField(processors=[processor])
-            email = fields.StringField(processors=[processor])
+            name = fields.StringField(
+                before_validation=[processor],
+                after_validation=[processor2])
+            email = fields.StringField(before_validation=[processor])
 
         obj = MyModel(name='a', email='b')
-        obj.clean()
+        obj.apply_before_validation()
         processor.assert_has_calls([
             call(instance=obj, new_value='b'),
             call(instance=obj, new_value='a'),
@@ -189,23 +192,82 @@ class TestBaseDocument(object):
         assert obj.name == 'Foo'
         assert obj.email == 'Foo'
 
-    def test_clean_updated_object(self):
+    def test_apply_before_validation_updated_object(self):
         processor = Mock(return_value='Foo')
+        processor2 = Mock(return_value='BarFoo')
 
         class MyModel(docs.BaseDocument):
-            name = fields.StringField(processors=[processor])
-            email = fields.StringField(processors=[processor])
+            name = fields.StringField(
+                before_validation=[processor],
+                after_validation=[processor2])
+            email = fields.StringField(before_validation=[processor])
 
         obj = MyModel(name='a', email='b')
 
         obj.name = 'asdasd'
         obj._get_changed_fields = Mock(return_value=['name'])
         obj._created = False
-        obj.clean()
+        obj.apply_before_validation()
         processor.assert_has_calls([
             call(instance=obj, new_value='asdasd'),
         ])
         assert obj.name == 'Foo'
+
+    def test_apply_after_validation(self):
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField()
+
+        obj = MyModel()
+        obj._fields_to_process = ['id', 'name']
+        obj.apply_processors = Mock()
+        obj.apply_after_validation()
+        obj.apply_processors.assert_called_once_with(
+            ['id', 'name'], after=True)
+
+    def test_apply_before_validation(self):
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField()
+
+        obj = MyModel()
+        obj._get_changed_fields = Mock(return_value=['name'])
+        obj._created = False
+        obj.apply_processors = Mock()
+        obj.apply_before_validation()
+        obj.apply_processors.assert_called_once_with(
+            ['name'], before=True)
+
+    def test_apply_processors(self):
+        def processor1(instance, new_value):
+            return new_value + '-'
+
+        def processor2(instance, new_value):
+            return new_value + '+'
+
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField(
+                before_validation=[processor1],
+                after_validation=[processor2])
+
+        obj = MyModel(name='foo')
+        obj.apply_processors(before=True)
+        assert obj.name == 'foo-'
+
+        obj.apply_processors(after=True)
+        assert obj.name == 'foo-+'
+
+        obj.apply_processors(field_names=['name'], before=True, after=True)
+        assert obj.name == 'foo-+-+'
+
+    def test_validate(self):
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField()
+
+        obj = MyModel(name='asdasd')
+        obj.apply_before_validation = Mock()
+        obj.apply_after_validation = Mock()
+        obj.validate()
+        obj.apply_before_validation.assert_called_once_with()
+        obj.apply_after_validation.assert_called_once_with()
 
     def test_get_null_values(self):
         class MyModel1(docs.BaseDocument):
