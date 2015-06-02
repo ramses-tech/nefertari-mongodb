@@ -117,10 +117,6 @@ class BaseMixin(object):
     def get_es_mapping(cls):
         """ Generate ES mapping from model schema. """
         from nefertari.elasticsearch import ES
-        ignored_types = set([
-            ReferenceField,
-            RelationshipField,
-        ])
         properties = {}
         mapping = {
             ES.src2type(cls.__name__): {
@@ -131,13 +127,22 @@ class BaseMixin(object):
         fields['id'] = fields.get(cls.pk_field())
 
         for name, field in fields.items():
+            if isinstance(field, RelationshipField):
+                field = field.field
+            if isinstance(field, (ReferenceField, RelationshipField)):
+                if name in cls._nested_relationships:
+                    field_mapping = {'type': 'object'}
+                else:
+                    field_mapping = TYPES_MAP[
+                        field.document_type.pk_field_type()]
+                properties[name] = field_mapping
+                continue
+
             if isinstance(field, ChoiceField):
                 field = field._real_field
             field_type = type(field)
             if field_type is ListField:
                 field_type = field.item_type
-            if field_type in ignored_types:
-                continue
             if field_type not in TYPES_MAP:
                 continue
             properties[name] = TYPES_MAP[field_type]
