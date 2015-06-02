@@ -10,6 +10,7 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset, DataProxy,
     to_dicts)
 from .metaclasses import ESMetaclass, DocumentMetaclass
+from .signals import on_bulk_update
 from .fields import (
     DateTimeField, IntegerField, ForeignKeyField, RelationshipField,
     DictField, ListField, ChoiceField, ReferenceField, StringField,
@@ -380,18 +381,27 @@ class BaseMixin(object):
         return self.save(**kw)
 
     @classmethod
-    def _delete(cls, **params):
-        cls.objects(**params).delete()
+    def _delete_many(cls, items, refresh_index=None):
+        """ Delete objects from :items: """
+        for item in items:
+            item.delete(refresh_index=refresh_index)
 
     @classmethod
-    def _delete_many(cls, items):
-        for item in items:
-            item.delete()
+    def _update_many(cls, items, refresh_index=None, **params):
+        """ Update objects from :items:
 
-    @classmethod
-    def _update_many(cls, items, **params):
+        If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
+        items.update() is called. Otherwise update is performed per-object.
+
+        'on_bulk_update' is called explicitly, because mongoengine does not
+        trigger any signals on QuerySet.update() call.
+        """
+        if isinstance(items, mongo.queryset.queryset.QuerySet):
+            items.update(**params)
+            on_bulk_update(cls, items, refresh_index=refresh_index)
+            return
         for item in items:
-            item.update(params)
+            item.update(params, refresh_index=refresh_index)
 
     def __repr__(self):
         parts = ['%s:' % self.__class__.__name__]
@@ -460,7 +470,8 @@ class BaseMixin(object):
             yield model_cls, documents
 
     def update_iterables(self, params, attr, unique=False,
-                         value_type=None, save=True):
+                         value_type=None, save=True,
+                         refresh_index=None):
         is_dict = isinstance(type(self)._fields[attr], mongo.DictField)
         is_list = isinstance(type(self)._fields[attr], mongo.ListField)
 
@@ -495,7 +506,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save()
+                self.save(refresh_index=refresh_index)
 
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
@@ -519,7 +530,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save()
+                self.save(refresh_index=refresh_index)
 
         if is_dict:
             update_dict(params)
@@ -589,6 +600,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         kw['force_insert'] = self._created
 
         sync_backref = kw.pop('sync_backref', True)
+        self._refresh_index = kw.pop('refresh_index', None)
         self._bump_version()
         try:
             super(BaseDocument, self).save(*arg, **kw)
@@ -617,6 +629,7 @@ class BaseDocument(BaseMixin, mongo.Document):
             hook(document=self)
 
     def update(self, params, **kw):
+        # refresh_index is passed to _update and then to save
         try:
             return self._update(params, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
@@ -638,6 +651,10 @@ class BaseDocument(BaseMixin, mongo.Document):
             raise JHTTPBadRequest(
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
                 extra={'data': e})
+
+    def delete(self, refresh_index=None, **kwargs):
+        self._refresh_index = refresh_index
+        super(BaseDocument, self).delete(**kwargs)
 
     def apply_processors(self, field_names=None, before=False, after=False):
         """ Apply processors to fields with :field_names: names.
