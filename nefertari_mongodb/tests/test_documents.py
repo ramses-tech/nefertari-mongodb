@@ -70,8 +70,16 @@ class TestBaseMixin(object):
             name = fields.StringField(primary_key=True)
             status = fields.ChoiceField(choices=['active'])
             groups = fields.ListField(item_type=fields.IntegerField)
-        mapping = MyModel.get_es_mapping()
-        assert mapping == {
+
+        class MyModel2(docs.BaseDocument):
+            _nested_relationships = ['child']
+            __tablename__ = 'mymodel2'
+            name = fields.StringField(primary_key=True)
+            child = fields.Relationship(
+                document='MyModel', backref_name='parent',
+                uselist=False, backref_uselist=False)
+
+        assert MyModel.get_es_mapping() == {
             'mymodel': {
                 'properties': {
                     '_type': {'type': 'string'},
@@ -80,7 +88,22 @@ class TestBaseMixin(object):
                     'id': {'type': 'string'},
                     'my_id': {'type': 'string'},
                     'name': {'type': 'string'},
+                    'parent': {'type': 'string'},
                     'status': {'type': 'string'},
+                    'updated_at': {'format': 'dateOptionalTime',
+                                   'type': 'date'}
+                }
+            }
+        }
+
+        assert MyModel2.get_es_mapping() == {
+            'mymodel2': {
+                'properties': {
+                    '_type': {'type': 'string'},
+                    '_version': {'type': 'long'},
+                    'id': {'type': 'string'},
+                    'name': {'type': 'string'},
+                    'child': {'type': 'object'},
                     'updated_at': {'format': 'dateOptionalTime',
                                    'type': 'date'}
                 }
