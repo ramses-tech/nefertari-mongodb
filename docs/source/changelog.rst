@@ -1,6 +1,11 @@
 Changelog
 =========
 
+* :release:`0.2.2 <2015-06-03>`
+* :bug:`-` Fixed password minimum length support by adding before and after validation processors
+* :bug:`-` Fixed bug with Elasticsearch indexing of nested relationships
+* :bug:`-` Fixed race condition in Elasticsearch indexing
+
 * :release:`0.2.1 <2015-05-27>`
 * :bug:`-` Fixed ES mapping error when values of field were all null
 * :bug:`-` Fix metaclass fields join
