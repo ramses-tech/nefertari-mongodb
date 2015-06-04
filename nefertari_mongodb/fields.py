@@ -67,11 +67,24 @@ class ProcessableMixin(object):
     is being set on a field.
     """
     def __init__(self, *args, **kwargs):
-        self.processors = kwargs.pop('processors', ())
+        """ Pop before/after_validation processors
+
+        :before_validation: Processors that are run before
+            BaseDocument.validate()
+        :after_validation: Processors that are run after
+            BaseDocument.validate()
+        """
+        self.before_validation = kwargs.pop('before_validation', ())
+        self.after_validation = kwargs.pop('after_validation', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
 
-    def apply_processors(self, instance, new_value):
-        for proc in self.processors:
+    def apply_processors(self, instance, new_value, before=False, after=False):
+        processors = []
+        if before:
+            processors += list(self.before_validation)
+        if after:
+            processors += list(self.after_validation)
+        for proc in processors:
             new_value = proc(instance=instance, new_value=new_value)
         return new_value
 

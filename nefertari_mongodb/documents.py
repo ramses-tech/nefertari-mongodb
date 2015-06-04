@@ -10,6 +10,7 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset, DataProxy,
     to_dicts)
 from .metaclasses import ESMetaclass, DocumentMetaclass
+from .signals import on_bulk_update
 from .fields import (
     DateTimeField, IntegerField, ForeignKeyField, RelationshipField,
     DictField, ListField, ChoiceField, ReferenceField, StringField,
@@ -116,10 +117,6 @@ class BaseMixin(object):
     def get_es_mapping(cls):
         """ Generate ES mapping from model schema. """
         from nefertari.elasticsearch import ES
-        ignored_types = set([
-            ReferenceField,
-            RelationshipField,
-        ])
         properties = {}
         mapping = {
             ES.src2type(cls.__name__): {
@@ -130,13 +127,22 @@ class BaseMixin(object):
         fields['id'] = fields.get(cls.pk_field())
 
         for name, field in fields.items():
+            if isinstance(field, RelationshipField):
+                field = field.field
+            if isinstance(field, (ReferenceField, RelationshipField)):
+                if name in cls._nested_relationships:
+                    field_mapping = {'type': 'object'}
+                else:
+                    field_mapping = TYPES_MAP[
+                        field.document_type.pk_field_type()]
+                properties[name] = field_mapping
+                continue
+
             if isinstance(field, ChoiceField):
                 field = field._real_field
             field_type = type(field)
             if field_type is ListField:
                 field_type = field.item_type
-            if field_type in ignored_types:
-                continue
             if field_type not in TYPES_MAP:
                 continue
             properties[name] = TYPES_MAP[field_type]
@@ -380,18 +386,27 @@ class BaseMixin(object):
         return self.save(**kw)
 
     @classmethod
-    def _delete(cls, **params):
-        cls.objects(**params).delete()
+    def _delete_many(cls, items, refresh_index=None):
+        """ Delete objects from :items: """
+        for item in items:
+            item.delete(refresh_index=refresh_index)
 
     @classmethod
-    def _delete_many(cls, items):
-        for item in items:
-            item.delete()
+    def _update_many(cls, items, refresh_index=None, **params):
+        """ Update objects from :items:
 
-    @classmethod
-    def _update_many(cls, items, **params):
+        If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
+        items.update() is called. Otherwise update is performed per-object.
+
+        'on_bulk_update' is called explicitly, because mongoengine does not
+        trigger any signals on QuerySet.update() call.
+        """
+        if isinstance(items, mongo.queryset.queryset.QuerySet):
+            items.update(**params)
+            on_bulk_update(cls, items, refresh_index=refresh_index)
+            return
         for item in items:
-            item.update(params)
+            item.update(params, refresh_index=refresh_index)
 
     def __repr__(self):
         parts = ['%s:' % self.__class__.__name__]
@@ -460,7 +475,8 @@ class BaseMixin(object):
             yield model_cls, documents
 
     def update_iterables(self, params, attr, unique=False,
-                         value_type=None, save=True):
+                         value_type=None, save=True,
+                         refresh_index=None):
         is_dict = isinstance(type(self)._fields[attr], mongo.DictField)
         is_list = isinstance(type(self)._fields[attr], mongo.ListField)
 
@@ -495,7 +511,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save()
+                self.save(refresh_index=refresh_index)
 
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
@@ -519,7 +535,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save()
+                self.save(refresh_index=refresh_index)
 
         if is_dict:
             update_dict(params)
@@ -589,6 +605,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         kw['force_insert'] = self._created
 
         sync_backref = kw.pop('sync_backref', True)
+        self._refresh_index = kw.pop('refresh_index', None)
         self._bump_version()
         try:
             super(BaseDocument, self).save(*arg, **kw)
@@ -617,6 +634,7 @@ class BaseDocument(BaseMixin, mongo.Document):
             hook(document=self)
 
     def update(self, params, **kw):
+        # refresh_index is passed to _update and then to save
         try:
             return self._update(params, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
@@ -631,33 +649,66 @@ class BaseDocument(BaseMixin, mongo.Document):
 
     def validate(self, *arg, **kw):
         try:
-            return super(BaseDocument, self).validate(*arg, **kw)
+            self.apply_before_validation()
+            super(BaseDocument, self).validate(*arg, **kw)
+            self.apply_after_validation()
         except mongo.ValidationError as e:
             raise JHTTPBadRequest(
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
                 extra={'data': e})
 
-    def clean(self, force_all=False):
-        """ Override `clean` method to apply field processors to changed
-        fields before running validation.
+    def delete(self, refresh_index=None, **kwargs):
+        self._refresh_index = refresh_index
+        super(BaseDocument, self).delete(**kwargs)
+
+    def apply_processors(self, field_names=None, before=False, after=False):
+        """ Apply processors to fields with :field_names: names.
+
+        Arguments:
+          :field_names: List of string names of changed fields.
+          :before: Boolean indicating whether to apply before_validation
+            processors.
+          :after: Boolean indicating whether to apply after_validation
+            processors.
+        """
+        if field_names is None:
+            field_names = self._fields.keys()
+
+        for name in field_names:
+            field = self._fields[name]
+            if hasattr(field, 'apply_processors'):
+                new_value = getattr(self, name)
+                processed_value = field.apply_processors(
+                    instance=self, new_value=new_value,
+                    before=before, after=after)
+                setattr(self, name, processed_value)
+
+    def apply_before_validation(self):
+        """ Determine changed fields and run `self.apply_processors` to
+        apply needed processors.
 
         Note that at this stage, field values are in the exact same state
         you posted/set them. E.g. if you set time_field='11/22/2000',
         self.time_field will be equal to '11/22/2000' here.
         """
-        if self._created or force_all:  # New object
+        if self._created:  # New object
             changed_fields = self._fields.keys()
         else:
             # Apply processors to updated fields only
             changed_fields = self._get_changed_fields()
 
-        for name in changed_fields:
-            field = self._fields[name]
-            if hasattr(field, 'apply_processors'):
-                new_value = getattr(self, name)
-                processed_value = field.apply_processors(
-                    instance=self, new_value=new_value)
-                setattr(self, name, processed_value)
+        self._fields_to_process = changed_fields
+        self.apply_processors(changed_fields, before=True)
+
+    def apply_after_validation(self):
+        """ Run `self.apply_processors` with field names determined by
+        `self.apply_before_validation`.
+
+        Note that at this stage, field values are in the exact same state
+        you posted/set them. E.g. if you set time_field='11/22/2000',
+        self.time_field will be equal to '11/22/2000' here.
+        """
+        self.apply_processors(self._fields_to_process, after=True)
 
 
 class ESBaseDocument(BaseDocument):
