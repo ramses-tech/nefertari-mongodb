@@ -8,13 +8,13 @@ install_requires = [
     'elasticsearch',
     'python-dateutil',
     'pyramid_tm',
-    'nefertari==0.3.2'
+    'nefertari>=0.3.3'
 ]
 
 
 setup(
     name='nefertari_mongodb',
-    version="0.2.2",
+    version="0.2.3",
     description='mongodb engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
