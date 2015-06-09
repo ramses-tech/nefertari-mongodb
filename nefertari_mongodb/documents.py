@@ -599,6 +599,10 @@ class BaseDocument(BaseMixin, mongo.Document):
         performing fields presence validation in the original mongoengine
         init code:
         https://github.com/MongoEngine/mongoengine/blob/v0.9.0/mongoengine/base/document.py#L41
+
+        PS. This issue is fixed in mongoengine master and not released after
+        0.9.0 yet.
+        https://github.com/MongoEngine/mongoengine/blob/master/mongoengine/base/document.py#L75
         """
         _created = values.get('_created')
         if _created is not None and not _created:
