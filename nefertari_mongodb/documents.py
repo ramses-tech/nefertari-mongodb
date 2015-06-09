@@ -590,6 +590,27 @@ class BaseDocument(BaseMixin, mongo.Document):
         'abstract': True,
     }
 
+    def __init__(self, *args, **values):
+        """ Override init to filter out invalid fields from :values:.
+
+        Fields are filtered out to make mongoengine less strict when
+        loading objects from database.
+        :internal_fields: are the fields pop'ed from :values: before
+        performing fields presence validation in the original mongoengine
+        init code:
+        https://github.com/MongoEngine/mongoengine/blob/v0.9.0/mongoengine/base/document.py#L41
+        """
+        _created = values.get('_created')
+        if _created is not None and not _created:
+            internal_fields = [
+                'id', 'pk', '_cls', '_text_score',
+                '__auto_convert', '__only_fields', '_created',
+            ]
+            valid_fields = list(self._fields.keys()) + internal_fields
+            values = {key: val for key, val in values.items()
+                      if key in valid_fields}
+        super(BaseDocument, self).__init__(*args, **values)
+
     def _bump_version(self):
         if self._is_modified():
             self.updated_at = datetime.utcnow()
