@@ -370,12 +370,18 @@ class BaseMixin(object):
     def _update(self, params, **kw):
         process_bools(params)
         self.check_fields_allowed(params.keys())
+        iter_fields = set(
+            k for k, v in type(self)._fields.items()
+            if isinstance(v, (DictField, ListField)) and
+            not isinstance(v, RelationshipField))
         pk_field = self.pk_field()
-
         for key, value in params.items():
             if key == pk_field:  # can't change the primary key
                 continue
-            setattr(self, key, value)
+            if key in iter_fields:
+                self.update_iterables(value, key, unique=True, save=False)
+            else:
+                setattr(self, key, value)
         return self.save(**kw)
 
     @classmethod
