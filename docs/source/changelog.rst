@@ -3,6 +3,7 @@ Changelog
 
 * :release:`0.3.0 <2015-06-12>`
 * :support:`-` Added python3 support
+* :bug:`- major` Filter-out undefined fields on document load
 
 * :release:`0.2.3 <2015-06-05>`
 * :bug:`-` Forward compatibility with nefertari releases
