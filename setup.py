@@ -9,13 +9,13 @@ install_requires = [
     'python-dateutil',
     'pyramid_tm',
     'six',
-    'nefertari>=0.3.3'
+    'nefertari>=0.4.0'
 ]
 
 
 setup(
     name='nefertari_mongodb',
-    version="0.2.3",
+    version="0.3.0",
     description='mongodb engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
