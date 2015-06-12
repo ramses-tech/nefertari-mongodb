@@ -2,6 +2,7 @@ import copy
 import logging
 from datetime import datetime
 
+import six
 import mongoengine as mongo
 
 from nefertari.json_httpexceptions import (
@@ -273,12 +274,14 @@ class BaseMixin(object):
             query_set = cls.objects
 
         # Remove any __ legacy instructions from this point on
-        params = dictset(filter(
-            lambda item: not item[0].startswith('__'), params.items()))
+        params = dictset({
+            key: val for key, val in params.items()
+            if not key.startswith('__')
+        })
 
         if __strict:
             _check_fields = [
-                f.strip('-+') for f in params.keys() + _fields + _sort]
+                f.strip('-+') for f in list(params.keys()) + _fields + _sort]
             cls.check_fields_allowed(_check_fields)
         else:
             params = cls.filter_fields(params)
@@ -337,7 +340,7 @@ class BaseMixin(object):
     def fields_to_query(cls):
         query_fields = [
             'id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
-        return query_fields + cls._fields.keys()
+        return query_fields + list(cls._fields.keys())
 
     @classmethod
     def get_resource(cls, **params):
@@ -369,7 +372,7 @@ class BaseMixin(object):
 
     def _update(self, params, **kw):
         process_bools(params)
-        self.check_fields_allowed(params.keys())
+        self.check_fields_allowed(list(params.keys()))
         iter_fields = set(
             k for k, v in type(self)._fields.items()
             if isinstance(v, (DictField, ListField)) and
@@ -432,8 +435,7 @@ class BaseMixin(object):
     def get_null_values(cls):
         """ Get null values of :cls: fields. """
         null_values = {}
-        field_names = cls._fields.keys()
-        for name in field_names:
+        for name in cls._fields.keys():
             field = getattr(cls, name)
             if isinstance(field, RelationshipField):
                 value = []
@@ -499,7 +501,7 @@ class BaseMixin(object):
             if update_params is None:
                 update_params = {
                     '-' + key: val for key, val in final_value.items()}
-            positive, negative = split_keys(update_params.keys())
+            positive, negative = split_keys(list(update_params.keys()))
 
             # Pop negative keys
             for key in negative:
@@ -507,7 +509,7 @@ class BaseMixin(object):
 
             # Set positive keys
             for key in positive:
-                final_value[unicode(key)] = update_params[key]
+                final_value[str(key)] = update_params[key]
 
             setattr(self, attr, final_value)
             if save:
@@ -518,8 +520,11 @@ class BaseMixin(object):
             final_value = copy.deepcopy(final_value)
             if update_params is None:
                 update_params = ['-' + val for val in final_value]
-            keys = (update_params.keys() if isinstance(update_params, dict)
-                    else update_params)
+            if isinstance(update_params, dict):
+                keys = list(update_params.keys())
+            else:
+                keys = update_params
+
             positive, negative = split_keys(keys)
 
             if not (positive + negative):
@@ -560,7 +565,7 @@ class BaseMixin(object):
             **with_params)
         with_objs = dict([[str(wth.id), wth] for wth in with_objs])
 
-        params['%s__in' % join_on] = with_objs.keys()
+        params['%s__in' % join_on] = list(with_objs.keys())
         objs = cls.get_collection(**params)
 
         for ob in objs:
@@ -580,9 +585,8 @@ class BaseMixin(object):
         return modified
 
 
-class BaseDocument(BaseMixin, mongo.Document):
-    __metaclass__ = DocumentMetaclass
-
+class BaseDocument(six.with_metaclass(DocumentMetaclass,
+                                      BaseMixin, mongo.Document)):
     updated_at = DateTimeField()
     _version = IntegerField(default=0)
 
@@ -692,11 +696,12 @@ class BaseDocument(BaseMixin, mongo.Document):
         self.time_field will be equal to '11/22/2000' here.
         """
         if self._created:  # New object
-            changed_fields = self._fields.keys()
+            changed_fields = list(self._fields.keys())
         else:
             # Apply processors to updated fields only
             changed_fields = self._get_changed_fields()
 
+        changed_fields = sorted(changed_fields)
         self._fields_to_process = changed_fields
         self.apply_processors(changed_fields, before=True)
 
@@ -711,8 +716,7 @@ class BaseDocument(BaseMixin, mongo.Document):
         self.apply_processors(self._fields_to_process, after=True)
 
 
-class ESBaseDocument(BaseDocument):
-    __metaclass__ = ESMetaclass
+class ESBaseDocument(six.with_metaclass(ESMetaclass, BaseDocument)):
     meta = {
         'abstract': True,
     }
