@@ -633,7 +633,6 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         """
         kw['force_insert'] = self._created
 
-        sync_backref = kw.pop('sync_backref', True)
         self._refresh_index = kw.pop('refresh_index', None)
         self._bump_version()
         try:
@@ -648,8 +647,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
                     self.__class__.__name__),
                 extra={'data': e})
         else:
-            if sync_backref:
-                self.run_backref_hooks()
+            self.run_backref_hooks()
             self._backref_hooks = ()
             return self
 
