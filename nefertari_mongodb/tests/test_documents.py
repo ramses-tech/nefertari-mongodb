@@ -2,6 +2,7 @@ import pytest
 from mock import patch, Mock, call
 
 import mongoengine as mongo
+from mongoengine.errors import FieldDoesNotExist
 from nefertari.utils.dictset import dictset
 from nefertari.json_httpexceptions import JHTTPBadRequest
 
@@ -195,6 +196,22 @@ class TestBaseMixin(object):
 
 
 class TestBaseDocument(object):
+
+    def test_init_created_with_invalid_fields(self):
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField()
+
+        with pytest.raises(FieldDoesNotExist):
+            MyModel(name='foo', description='bar', id=1, pk=3)
+
+    def test_init_loaded_with_invalid_fields(self):
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField()
+
+        try:
+            MyModel(_created=False, name='foo', description='bar')
+        except FieldDoesNotExist:
+            raise Exception('Unexpected error')
 
     def test_apply_before_validation_new_object(self):
         processor = Mock(return_value='Foo')
