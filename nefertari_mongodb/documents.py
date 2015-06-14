@@ -378,7 +378,6 @@ class BaseMixin(object):
             if isinstance(v, (DictField, ListField)) and
             not isinstance(v, RelationshipField))
         pk_field = self.pk_field()
-
         for key, value in params.items():
             if key == pk_field:  # can't change the primary key
                 continue
@@ -498,7 +497,9 @@ class BaseMixin(object):
         def update_dict(update_params):
             final_value = getattr(self, attr, {}) or {}
             final_value = final_value.copy()
-            if update_params is None:
+            if update_params is None or update_params == '':
+                if not final_value:
+                    return
                 update_params = {
                     '-' + key: val for key, val in final_value.items()}
             positive, negative = split_keys(list(update_params.keys()))
@@ -518,7 +519,9 @@ class BaseMixin(object):
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
             final_value = copy.deepcopy(final_value)
-            if update_params is None:
+            if update_params is None or update_params == '':
+                if not final_value:
+                    return
                 update_params = ['-' + val for val in final_value]
             if isinstance(update_params, dict):
                 keys = list(update_params.keys())
