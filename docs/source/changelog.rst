@@ -1,9 +1,10 @@
 Changelog
 =========
 
-* :release:`0.3.0 <2015-06-12>`
+* :release:`0.3.0 <2015-06-14>`
 * :support:`-` Added python3 support
 * :bug:`- major` Filter-out undefined fields on document load
+* :bug:`- major` Fixed bug whereby PATCHing relationship field doesn't update all relations
 
 * :release:`0.2.3 <2015-06-05>`
 * :bug:`-` Forward compatibility with nefertari releases
