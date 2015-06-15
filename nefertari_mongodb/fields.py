@@ -2,10 +2,11 @@ import datetime
 import pickle
 from functools import partial
 
+import six
+import dateutil.parser
 import mongoengine as mongo
 from mongoengine import fields
 from mongoengine.queryset import DO_NOTHING, NULLIFY, CASCADE, DENY, PULL
-import dateutil.parser
 
 
 class BaseFieldMixin(object):
@@ -124,7 +125,7 @@ class DateField(ProcessableMixin, BaseFieldMixin, fields.DateTimeField):
 
     def to_python(self, *args, **kwargs):
         value = super(DateField, self).to_python(*args, **kwargs)
-        if isinstance(value, basestring):
+        if isinstance(value, six.string_types):
             value = dateutil.parser.parse(value, dayfirst=False).date()
         return value
 
@@ -182,10 +183,10 @@ class ChoiceField(ProcessableMixin, fields.BaseField):
         first_choice = kwargs['choices'][0]
         if isinstance(first_choice, int):
             self._real_field = IntegerField(*args, **kwargs)
-        elif isinstance(first_choice, str):
-            self._real_field = StringField(*args, **kwargs)
-        elif isinstance(first_choice, unicode):
+        elif isinstance(first_choice, six.text_type):
             self._real_field = UnicodeField(*args, **kwargs)
+        elif isinstance(first_choice, six.string_types):
+            self._real_field = StringField(*args, **kwargs)
         elif isinstance(first_choice, float):
             self._real_field = FloatField(*args, **kwargs)
         else:
@@ -245,7 +246,7 @@ class TimeField(ProcessableMixin, BaseFieldMixin, fields.BaseField):
 
     def to_mongo(self, value):
         value = super(TimeField, self).to_mongo(value)
-        if not isinstance(value, basestring):
+        if not isinstance(value, six.string_types):
             value = value.strftime('%H:%M:%S')
         return value
 
@@ -256,10 +257,10 @@ class TimeField(ProcessableMixin, BaseFieldMixin, fields.BaseField):
             return value
         if isinstance(value, datetime.datetime):
             return value.time()
-        if callable(value):
+        if six.callable(value):
             return value()
 
-        if not isinstance(value, basestring):
+        if not isinstance(value, six.string_types):
             return None
 
         try:
@@ -349,7 +350,7 @@ class ListField(ProcessableMixin, BaseFieldMixin, fields.ListField):
                 choice_list = [k for k, v in self.list_choices]
             if set(value) - set(choice_list):
                 self.error('Value must be one of {}. Got: {}'.format(
-                    unicode(choice_list), unicode(value)))
+                    str(choice_list), str(value)))
         return value
 
 
@@ -420,16 +421,13 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
         super(ReferenceField, self).__init__(*args, **kwargs)
 
     def _register_deletion_hook(self, old_object, instance):
-        """ Register a backref hook to delete the `instance` from the `old_object`'s
-        field to which the `instance` was related beforehand by the backref.
+        """ Register a backref hook to delete the `instance` from the
+        `old_object`'s field to which the `instance` was related before
+        by the backref.
 
         `instance` is either deleted from the `old_object` field's collection
         or `old_object`'s field, responsible for relationship is set to None.
         This depends on type of the field at `old_object`.
-
-        `old_object.update` is run with `sync_backref=False` because
-        original relationship side is already updated and it is the one
-        who calls the hook. This also prevents recursion in One2One.
 
         `instance` is not actually used in hook - up-to-date value of
         `instance` is passed to hook when it is run.
@@ -440,12 +438,15 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
             if field_value:
                 field_object = old_obj._fields[field_name]
                 if isinstance(field_object, ListField):
-                    field_value = field_value or []
-                    if document in field_value:
-                        field_value.remove(document)
+                    new_value = list(field_value or [])
+                    if document in new_value:
+                        new_value.remove(document)
                 else:
-                    field_value = None
-                old_obj.update({field_name: field_value}, sync_backref=False)
+                    new_value = (None if field_value == document
+                                 else field_value)
+
+                if new_value != field_value:
+                    old_obj.update({field_name: new_value})
 
         old_object_hook = partial(
             _delete_from_old,
@@ -454,16 +455,12 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
         instance._backref_hooks += (old_object_hook,)
 
     def _register_addition_hook(self, new_object, instance):
-        """ Register backref hook to add `instance` to the `old_object`s
+        """ Register backref hook to add `instance` to the `new_object`s
         field to which `instance` became related by the backref.
 
-        `instance` is either added to `old_object` field's collection or
-        `old_object`s field, responsible for relationship is set to `instance`.
-        This depends on type of the field at `old_object`.
-
-        `new_object.update` is run with `sync_backref=False` because
-        original relationship side is already updated and it is the one
-        who calls the hook. This also prevents recursion in One2One.
+        `instance` is either added to `new_object` field's collection or
+        `new_object`s field, responsible for relationship is set to `instance`.
+        This depends on type of the field at `new_object`.
 
         `instance` is not actually used in hook - up-to-date value of
         `instance` is passed to hook when it is run.
@@ -473,12 +470,15 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
             field_value = getattr(new_obj, field_name, None)
             field_object = new_obj._fields[field_name]
             if isinstance(field_object, ListField):
-                field_value = field_value or []
-                if document not in field_value:
-                    field_value.append(document)
+                new_value = list(field_value or [])
+                if document not in new_value:
+                    new_value.append(document)
             else:
-                field_value = document
-            new_obj.update({field_name: field_value}, sync_backref=False)
+                new_value = (document if field_value != document
+                             else field_value)
+
+            if new_value != field_value:
+                new_obj.update({field_name: new_value})
 
         new_object_hook = partial(
             _add_to_new,
@@ -505,7 +505,6 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
         old_object = getattr(instance, self.name)
         new_object = value
         super_set(instance, value)
-
         # The same object is being set - no changes needed
         if new_object == old_object:
             return
