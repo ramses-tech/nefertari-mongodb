@@ -388,8 +388,10 @@ class BaseMixin(object):
     @classmethod
     def _delete_many(cls, items, refresh_index=None):
         """ Delete objects from :items: """
+        items_count = len(items)
         for item in items:
             item.delete(refresh_index=refresh_index)
+        return items_count
 
     @classmethod
     def _update_many(cls, items, refresh_index=None, **params):
@@ -404,9 +406,11 @@ class BaseMixin(object):
         if isinstance(items, mongo.queryset.queryset.QuerySet):
             items.update(**params)
             on_bulk_update(cls, items, refresh_index=refresh_index)
-            return
+            return cls.count(items)
+        items_count = len(items)
         for item in items:
             item.update(params, refresh_index=refresh_index)
+        return items_count
 
     def __repr__(self):
         parts = ['%s:' % self.__class__.__name__]
