@@ -148,15 +148,7 @@ class FloatField(ProcessableMixin, BaseFieldMixin, fields.FloatField):
 
 
 class StringField(ProcessableMixin, BaseFieldMixin, fields.StringField):
-    """ Custom version of mongoengine StringField.
-
-    Converts values to str type on output. Unicode strings
-    are returned by a separate field class.
-    """
     _valid_kwargs = ('regex', 'min_length', 'max_length')
-
-    def to_python(self, value):
-        return str(value)
 
 
 class TextField(StringField):
