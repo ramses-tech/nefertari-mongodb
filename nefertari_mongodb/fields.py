@@ -1,6 +1,5 @@
 import datetime
 import pickle
-from inspect import getargspec
 from functools import partial
 
 import six
@@ -80,33 +79,14 @@ class ProcessableMixin(object):
         self.after_validation = kwargs.pop('after_validation', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
 
-    def _get_processor_kwargs(self, proc, kwargs):
-        """ Get values for arguments expected by processor.
-
-        :kwargs: are filtered by checking which :kwargs: keys are
-        defined as arguments of :proc: callable.
-
-        Arguments:
-            :proc: Processor function.
-            :kwargs: Dict containing full set of values that that are
-                desired to be passed to processor.
-        """
-        defined_args = getargspec(proc).args
-        return {k: v for k, v in kwargs.items() if k in defined_args}
-
-    def apply_processors(self, instance, new_value,
-                         before=False, after=False):
+    def apply_processors(self, instance, new_value, before=False, after=False):
         processors = []
         if before:
             processors += list(self.before_validation)
         if after:
             processors += list(self.after_validation)
         for proc in processors:
-            proc_kwargs = self._get_processor_kwargs(proc, kwargs={
-                'instance': instance,
-                'new_value': new_value,
-            })
-            new_value = proc(**proc_kwargs)
+            new_value = proc(instance=instance, new_value=new_value)
         return new_value
 
 
