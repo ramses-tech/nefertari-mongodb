@@ -28,7 +28,7 @@ class BaseFieldMixin(object):
     _common_valid_kwargs = (
         'db_field', 'name', 'required', 'default', 'unique',
         'unique_with', 'primary_key', 'validation', 'choices',
-        'verbose_name', 'help_text', 'sparse',
+        'verbose_name', 'help_text', 'sparse', 'onupdate',
         # 'null'  # In development branch of mongoengine
     )
 
@@ -36,7 +36,23 @@ class BaseFieldMixin(object):
         """ Translate kwargs and drop invalid kwargs. """
         kwargs = self.translate_kwargs(kwargs)
         kwargs = self.drop_invalid_kwargs(kwargs)
+        self.onupdate = kwargs.pop('onupdate', None)
         super(BaseFieldMixin, self).__init__(*args, **kwargs)
+
+    def clean(self, instance):
+        """ Perform field clean.
+
+        In particular:
+            - On update set field value to `self.onupdate`
+
+        Arguments:
+            :instance: BaseDocument instance to which field is attached
+        """
+        if self.onupdate is not None and not instance._created:
+            value = self.onupdate
+            if six.callable(value):
+                value = value()
+            setattr(instance, self.name, value)
 
     def translate_kwargs(self, kwargs):
         """ Translate kwargs from one key to another.

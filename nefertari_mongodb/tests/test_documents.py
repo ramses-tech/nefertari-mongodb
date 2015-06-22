@@ -325,3 +325,12 @@ class TestBaseDocument(object):
             'models1': [],
             'name': None,
         }
+
+    def test_clean(self):
+        class MyModel1(docs.BaseDocument):
+            name = fields.IdField(onupdate='foo')
+        obj = MyModel1()
+        obj._created = False
+        assert obj.name is None
+        obj.clean()
+        assert obj.name == 'foo'
