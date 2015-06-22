@@ -594,7 +594,6 @@ class BaseMixin(object):
 
 class BaseDocument(six.with_metaclass(DocumentMetaclass,
                                       BaseMixin, mongo.Document)):
-    updated_at = DateTimeField()
     _version = IntegerField(default=0)
 
     meta = {
@@ -628,7 +627,6 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
 
     def _bump_version(self):
         if self._is_modified():
-            self.updated_at = datetime.utcnow()
             self._version += 1
 
     def save(self, *arg, **kw):
