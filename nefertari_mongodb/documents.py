@@ -1,6 +1,5 @@
 import copy
 import logging
-from datetime import datetime
 
 import six
 import mongoengine as mongo
@@ -18,7 +17,7 @@ from .fields import (
     TextField, UnicodeField, UnicodeTextField,
     IdField, BooleanField, BinaryField, DecimalField, FloatField,
     BigIntegerField, SmallIntegerField, IntervalField, DateField,
-    TimeField
+    TimeField, BaseFieldMixin
 )
 
 
@@ -594,7 +593,6 @@ class BaseMixin(object):
 
 class BaseDocument(six.with_metaclass(DocumentMetaclass,
                                       BaseMixin, mongo.Document)):
-    updated_at = DateTimeField()
     _version = IntegerField(default=0)
 
     meta = {
@@ -628,7 +626,6 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
 
     def _bump_version(self):
         if self._is_modified():
-            self.updated_at = datetime.utcnow()
             self._version += 1
 
     def save(self, *arg, **kw):
@@ -744,6 +741,12 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         self.time_field will be equal to '11/22/2000' here.
         """
         self.apply_processors(self._fields_to_process, after=True)
+
+    def clean(self):
+        """ Clean fields which are instances of BaseFieldMixin """
+        for field_name, field_obj in self._fields.items():
+            if isinstance(field_obj, BaseFieldMixin):
+                field_obj.clean(self)
 
 
 class ESBaseDocument(six.with_metaclass(ESMetaclass, BaseDocument)):

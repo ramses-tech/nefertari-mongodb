@@ -91,8 +91,6 @@ class TestBaseMixin(object):
                     'name': {'type': 'string'},
                     'parent': {'type': 'string'},
                     'status': {'type': 'string'},
-                    'updated_at': {'format': 'dateOptionalTime',
-                                   'type': 'date'}
                 }
             }
         }
@@ -105,8 +103,6 @@ class TestBaseMixin(object):
                     'id': {'type': 'string'},
                     'name': {'type': 'string'},
                     'child': {'type': 'object'},
-                    'updated_at': {'format': 'dateOptionalTime',
-                                   'type': 'date'}
                 }
             }
         }
@@ -322,12 +318,19 @@ class TestBaseDocument(object):
             '_version': None,
             'name': None,
             'model2': None,
-            'updated_at': None,
         }
 
         assert MyModel2.get_null_values() == {
             '_version': None,
             'models1': [],
             'name': None,
-            'updated_at': None,
         }
+
+    def test_clean(self):
+        class MyModel1(docs.BaseDocument):
+            name = fields.IdField(onupdate='foo')
+        obj = MyModel1()
+        obj._created = False
+        assert obj.name is None
+        obj.clean()
+        assert obj.name == 'foo'
