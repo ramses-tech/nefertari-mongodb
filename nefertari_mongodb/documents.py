@@ -395,7 +395,7 @@ class BaseMixin(object):
         return items_count
 
     @classmethod
-    def _update_many(cls, items, refresh_index=None, **params):
+    def _update_many(cls, items, params, refresh_index=None):
         """ Update objects from :items:
 
         If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
