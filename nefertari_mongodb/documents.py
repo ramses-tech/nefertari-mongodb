@@ -387,15 +387,15 @@ class BaseMixin(object):
         return self.save(**kw)
 
     @classmethod
-    def _delete_many(cls, items, refresh_index=None):
+    def _delete_many(cls, items, request_params=None):
         """ Delete objects from :items: """
         items_count = len(items)
         for item in items:
-            item.delete(refresh_index=refresh_index)
+            item.delete(request_params)
         return items_count
 
     @classmethod
-    def _update_many(cls, items, refresh_index=None, **params):
+    def _update_many(cls, items, params, request_params=None):
         """ Update objects from :items:
 
         If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
@@ -406,11 +406,11 @@ class BaseMixin(object):
         """
         if isinstance(items, mongo.queryset.queryset.QuerySet):
             items.update(**params)
-            on_bulk_update(cls, items, refresh_index=refresh_index)
+            on_bulk_update(cls, items, request_params)
             return cls.count(items)
         items_count = len(items)
         for item in items:
-            item.update(params, refresh_index=refresh_index)
+            item.update(params, request_params)
         return items_count
 
     def __repr__(self):
@@ -480,7 +480,7 @@ class BaseMixin(object):
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
-                         refresh_index=None):
+                         request_params=None):
         is_dict = isinstance(type(self)._fields[attr], mongo.DictField)
         is_list = isinstance(type(self)._fields[attr], mongo.ListField)
 
@@ -517,7 +517,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save(refresh_index=refresh_index)
+                self.save(request_params)
 
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
@@ -546,7 +546,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save(refresh_index=refresh_index)
+                self.save(request_params)
 
         if is_dict:
             update_dict(params)
@@ -628,7 +628,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         if self._is_modified():
             self._version += 1
 
-    def save(self, *arg, **kw):
+    def save(self, request_params=None, *arg, **kw):
         """
         Force insert document in creation so that unique constraits are
         respected.
@@ -636,8 +636,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         (as opposed to an 'update' for example).
         """
         kw['force_insert'] = self._created
-
-        self._refresh_index = kw.pop('refresh_index', None)
+        self._request_params = request_params
         self._bump_version()
         try:
             super(BaseDocument, self).save(*arg, **kw)
@@ -664,8 +663,9 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         for hook in self._backref_hooks:
             hook(document=self)
 
-    def update(self, params, **kw):
-        # refresh_index is passed to _update and then to save
+    def update(self, params, request_params=None, **kw):
+        kw['request_params'] = request_params
+        # request_params are passed to _update and then to save
         try:
             return self._update(params, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
@@ -688,9 +688,9 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
                 extra={'data': e})
 
-    def delete(self, refresh_index=None, **kwargs):
-        self._refresh_index = refresh_index
-        super(BaseDocument, self).delete(**kwargs)
+    def delete(self, request_params=None, **kw):
+        self._request_params = request_params
+        super(BaseDocument, self).delete(**kw)
 
     def apply_processors(self, field_names=None, before=False, after=False):
         """ Apply processors to fields with :field_names: names.
