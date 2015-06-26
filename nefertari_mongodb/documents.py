@@ -664,9 +664,10 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
             hook(document=self)
 
     def update(self, params, request_params=None, **kw):
+        kw['request_params'] = request_params
         # request_params are passed to _update and then to save
         try:
-            return self._update(params, request_params, **kw)
+            return self._update(params, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
             if (e.__class__ is mongo.OperationError
                     and 'E11000' not in e.message):
