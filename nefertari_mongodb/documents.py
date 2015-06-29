@@ -472,8 +472,12 @@ class BaseMixin(object):
         return _dict
 
     def get_reference_documents(self):
-        # TODO: Make lazy load of documents
-        models = self.__class__._meta['delete_rules'] or {}
+        models = []
+        for name, field in self._fields.items():
+            if isinstance(field, ReferenceField):
+                pair = (field.document_type, field.reverse_rel_field)
+                models.append(pair)
+
         for model_cls, key in models:
             documents = to_dicts(model_cls.objects(**{key: self}))
             yield model_cls, documents
