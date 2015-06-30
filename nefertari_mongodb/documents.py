@@ -75,7 +75,7 @@ TYPES_MAP = {
 
     BooleanField: {'type': 'boolean'},
     BinaryField: {'type': 'object'},
-    DictField: {'type': 'object'},
+    DictField: {'type': 'object', 'enabled': False},
 
     DecimalField: {'type': 'double'},
     FloatField: {'type': 'double'},
