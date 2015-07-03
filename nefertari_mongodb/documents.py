@@ -436,8 +436,11 @@ class BaseMixin(object):
     @classmethod
     def get_null_values(cls):
         """ Get null values of :cls: fields. """
+        skip_fields = {'_version', '_acl'}
         null_values = {}
         for name in cls._fields.keys():
+            if name in skip_fields:
+                continue
             field = getattr(cls, name)
             if isinstance(field, RelationshipField):
                 value = []
