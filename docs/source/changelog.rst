@@ -1,6 +1,13 @@
 Changelog
 =========
 
+* :release:`0.3.1 <2015-07-06>`
+* :bug:`-` Fixed a bug with unicode in StringField
+* :bug:`-` Fixed bug with Elasticsearch re-indexing of nested relationships
+* :bug:`-` Removed "updated_at" field from engine
+* :bug:`-` Disabled Elasticsearch indexing of DictField to allow storing arbitrary JSON data
+* :support:`- backported` Added support for SQLA-like "onupdate" argument
+
 * :release:`0.3.0 <2015-06-14>`
 * :support:`-` Added python3 support
 * :bug:`- major` Filter-out undefined fields on document load
@@ -16,7 +23,7 @@ Changelog
 
 * :release:`0.2.1 <2015-05-27>`
 * :bug:`-` Fixed ES mapping error when values of field were all null
-* :bug:`-` Fix metaclass fields join
+* :bug:`-` Fixed metaclass fields join
 
 * :release:`0.2.0 <2015-04-07>`
 * :feature:`-` Relationship indexing
