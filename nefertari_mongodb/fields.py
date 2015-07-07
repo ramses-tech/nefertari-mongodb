@@ -7,6 +7,9 @@ import dateutil.parser
 import mongoengine as mongo
 from mongoengine import fields
 from mongoengine.queryset import DO_NOTHING, NULLIFY, CASCADE, DENY, PULL
+from pyramid.security import (
+    Allow, Deny, Everyone, Authenticated, ALL_PERMISSIONS)
+from nefertari.resource import ACTIONS as NEF_ACTIONS
 
 
 class BaseFieldMixin(object):
@@ -364,11 +367,6 @@ class ListField(ProcessableMixin, BaseFieldMixin, fields.ListField):
 
 class DictField(ProcessableMixin, BaseFieldMixin, fields.DictField):
     _valid_kwargs = ('basecls', 'field')
-
-
-from pyramid.security import (
-    Allow, Deny, Everyone, Authenticated, ALL_PERMISSIONS)
-from nefertari.resource import ACTIONS as NEF_ACTIONS
 
 
 class ACLField(ProcessableMixin, BaseFieldMixin, fields.ListField):

@@ -5,6 +5,7 @@ import mongoengine as mongo
 from mongoengine.errors import FieldDoesNotExist
 from nefertari.utils.dictset import dictset
 from nefertari.json_httpexceptions import JHTTPBadRequest
+from pyramid.security import Allow, Everyone, ALL_PERMISSIONS
 
 from .. import documents as docs
 from .. import fields
@@ -83,6 +84,7 @@ class TestBaseMixin(object):
         assert MyModel.get_es_mapping() == {
             'mymodel': {
                 'properties': {
+                    '_acl': {'type': 'string'},
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'groups': {'type': 'long'},
@@ -98,6 +100,7 @@ class TestBaseMixin(object):
         assert MyModel2.get_es_mapping() == {
             'mymodel2': {
                 'properties': {
+                    '_acl': {'type': 'string'},
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'id': {'type': 'string'},
@@ -192,6 +195,50 @@ class TestBaseMixin(object):
 
 
 class TestBaseDocument(object):
+
+    @patch('nefertari_mongodb.fields.ACLField.objectify_acl')
+    def test_dunder_acl(self, mock_objectify):
+        class MyModel(docs.BaseDocument):
+            name = fields.StringField()
+
+        mock_objectify.return_value = [(1, 2, 3)]
+        myobj = MyModel()
+        myobj._acl = [('allow', 'g:admin', 'all')]
+        val = myobj.__acl__
+        assert val == [(1, 2, 3)]
+        mock_objectify.assert_called_once_with(
+            [['allow', 'g:admin', ['all']]])
+
+    def test_set_default_acl(self):
+        class MyModel(docs.BaseDocument):
+            __item_acl__ = [(Allow, Everyone, ALL_PERMISSIONS)]
+            name = fields.StringField()
+
+        obj = MyModel()
+        assert not obj._acl
+        obj._set_default_acl()
+        assert obj._acl == [['allow', 'everyone', ['all']]]
+
+    def test_set_default_acl_already_present(self):
+        class MyModel(docs.BaseDocument):
+            __item_acl__ = [(Allow, Everyone, ALL_PERMISSIONS)]
+            name = fields.StringField()
+
+        obj = MyModel()
+        obj._acl = [('deny', 'authenticated', 'show')]
+        obj._set_default_acl()
+        assert obj._acl == [['deny', 'authenticated', ['show']]]
+
+    def test_set_default_acl_not_created(self):
+        class MyModel(docs.BaseDocument):
+            __item_acl__ = [(Allow, Everyone, ALL_PERMISSIONS)]
+            name = fields.StringField()
+
+        obj = MyModel()
+        obj._created = False
+        assert not obj._acl
+        obj._set_default_acl()
+        assert not obj._acl
 
     def test_init_created_with_invalid_fields(self):
         class MyModel(docs.BaseDocument):
@@ -315,13 +362,11 @@ class TestBaseDocument(object):
                 document='MyModel1', backref_name='model2')
 
         assert MyModel1.get_null_values() == {
-            '_version': None,
             'name': None,
             'model2': None,
         }
 
         assert MyModel2.get_null_values() == {
-            '_version': None,
             'models1': [],
             'name': None,
         }
