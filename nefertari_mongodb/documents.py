@@ -17,7 +17,7 @@ from .fields import (
     TextField, UnicodeField, UnicodeTextField,
     IdField, BooleanField, BinaryField, DecimalField, FloatField,
     BigIntegerField, SmallIntegerField, IntervalField, DateField,
-    TimeField, BaseFieldMixin
+    TimeField, BaseFieldMixin, ACLField,
 )
 
 
@@ -72,6 +72,7 @@ TYPES_MAP = {
     mongo.fields.ObjectIdField: {'type': 'string'},
     ForeignKeyField: {'type': 'string'},
     IdField: {'type': 'string'},
+    ACLField: {'type': 'string'},
 
     BooleanField: {'type': 'boolean'},
     BinaryField: {'type': 'object'},
@@ -600,11 +601,13 @@ class BaseMixin(object):
 
 class BaseDocument(six.with_metaclass(DocumentMetaclass,
                                       BaseMixin, mongo.Document)):
-    _version = IntegerField(default=0)
-
     meta = {
         'abstract': True,
     }
+    __item_acl__ = None
+
+    _version = IntegerField(default=0)
+    _acl = ACLField()
 
     def __init__(self, *args, **values):
         """ Override init to filter out invalid fields from :values:.
@@ -631,9 +634,21 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
                       if key in valid_fields}
         super(BaseDocument, self).__init__(*args, **values)
 
+    @property
+    def __acl__(self):
+        acl = ACLField.objectify_acl(self._acl)
+        log.info('Loaded ACL from database for {}({}): {}'.format(
+            self.__class__.__name__,
+            getattr(self, self.pk_field()), acl))
+        return acl
+
     def _bump_version(self):
         if self._is_modified():
             self._version += 1
+
+    def _set_default_acl(self):
+        if self._created and not self._acl:
+            self._acl = self.__item_acl__
 
     def save(self, request_params=None, *arg, **kw):
         """
@@ -645,6 +660,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         kw['force_insert'] = self._created
         self._request_params = request_params
         self._bump_version()
+        self._set_default_acl()
         try:
             super(BaseDocument, self).save(*arg, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:

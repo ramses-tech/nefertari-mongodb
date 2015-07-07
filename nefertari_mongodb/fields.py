@@ -366,6 +366,118 @@ class DictField(ProcessableMixin, BaseFieldMixin, fields.DictField):
     _valid_kwargs = ('basecls', 'field')
 
 
+from pyramid.security import (
+    Allow, Deny, Everyone, Authenticated, ALL_PERMISSIONS)
+from nefertari.resource import ACTIONS as NEF_ACTIONS
+
+
+class ACLField(ProcessableMixin, BaseFieldMixin, fields.ListField):
+    """ Subclass of `JSONType` used to store Pyramid ACL. """
+    ACTIONS = {
+        Allow: 'allow',
+        Deny: 'deny',
+    }
+    INDENTIFIERS = {
+        Everyone: 'everyone',
+        Authenticated: 'authenticated',
+    }
+    PERMISSIONS = {
+        ALL_PERMISSIONS: 'all',
+    }
+
+    def _validate_action(self, action):
+        valid_actions = self.ACTIONS.values()
+        if action not in valid_actions:
+            err = 'Invalid ACL action value: {}. Valid values are: {}'
+            raise ValueError(err.format(action, ', '.join(valid_actions)))
+
+    def _validate_permissions(self, permissions):
+        valid_perms = set(self.PERMISSIONS.values())
+        valid_perms.update(NEF_ACTIONS)
+        invalid_perms = set(permissions) - set(valid_perms)
+        if invalid_perms:
+            err = 'Invalid ACL permission values: {}. Valid values are: {}'
+            raise ValueError(err.format(
+                ', '.join(invalid_perms), ', '.join(valid_perms)))
+
+    def validate_acl(self, value):
+        """ Validate ACL elements.
+
+        Identifiers are not validated as they may be arbitrary strings.
+        """
+        for action, identifier, permissions in value:
+            self._validate_action(action)
+            self._validate_permissions(permissions)
+
+    def _stringify_action(self, action):
+        action = self.ACTIONS.get(action, action)
+        return action.strip().lower()
+
+    def _stringify_identifier(self, identifier):
+        return self.INDENTIFIERS.get(identifier, identifier)
+
+    def _stringify_permissions(self, permissions):
+        if not isinstance(permissions, list):
+            permissions = [permissions]
+        clean_permissions = []
+        for permission in permissions:
+            try:
+                permission = permission.strip().lower()
+            except AttributeError:
+                pass
+            clean_permissions.append(permission)
+        return [self.PERMISSIONS.get(perm, perm)
+                for perm in clean_permissions]
+
+    def stringify_acl(self, value):
+        """ Get valid Pyramid ACL and convert it into object of the same
+        structure with Pyramid ACL values translated to strings.
+
+        String cleaning and case conversion is should also performed here.
+        In case ACL is already converted it won't change.
+        """
+        string_acl = []
+        for action, identifier, permissions in value:
+            action = self._stringify_action(action)
+            identifier = self._stringify_identifier(identifier)
+            permissions = self._stringify_permissions(permissions)
+            string_acl.append([action, identifier, permissions])
+        return string_acl
+
+    def __set__(self, instance, value):
+        valid_value = value and isinstance(value, list)
+        if valid_value and isinstance(value[0], (list, tuple)):
+            value = self.stringify_acl(value)
+            self.validate_acl(value)
+        return super(ACLField, self).__set__(instance, value)
+
+    @classmethod
+    def _objectify_action(cls, action):
+        inverted_actions = {v: k for k, v in cls.ACTIONS.items()}
+        return inverted_actions.get(action, action)
+
+    @classmethod
+    def _objectify_identifier(cls, identifier):
+        inverted_identifiers = {v: k for k, v in cls.INDENTIFIERS.items()}
+        return inverted_identifiers.get(identifier, identifier)
+
+    @classmethod
+    def _objectify_permissions(cls, permissions):
+        inverted_permissions = {v: k for k, v in cls.PERMISSIONS.items()}
+        return [inverted_permissions.get(perm, perm)
+                for perm in permissions]
+
+    @classmethod
+    def objectify_acl(cls, value):
+        object_acl = []
+        for action, identifier, permissions in value:
+            action = cls._objectify_action(action)
+            identifier = cls._objectify_identifier(identifier)
+            permissions = cls._objectify_permissions(permissions)
+            object_acl.append([action, identifier, permissions])
+        return object_acl
+
+
 class IdField(ProcessableMixin, BaseFieldMixin, fields.ObjectIdField):
     """ Just a subclass of ObjectIdField that must be used for fields
     that represent database-specific 'id' field.
