@@ -9,6 +9,8 @@ from nefertari.json_httpexceptions import (
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset, DataProxy,
     to_dicts)
+
+from .utils import objectify_acl
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .signals import on_bulk_update
 from .fields import (
@@ -636,7 +638,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
 
     @property
     def __acl__(self):
-        acl = ACLField.objectify_acl(self._acl)
+        acl = objectify_acl(self._acl)
         log.info('Loaded ACL from database for {}({}): {}'.format(
             self.__class__.__name__,
             getattr(self, self.pk_field()), acl))

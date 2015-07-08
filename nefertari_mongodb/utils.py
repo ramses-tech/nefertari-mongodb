@@ -24,3 +24,9 @@ def get_relationship_cls(field, model_cls):
     if isinstance(field_obj, RelationshipField):
         field_obj = getattr(field_obj, 'field')
     return getattr(field_obj, 'document_type')
+
+
+def objectify_acl(acl):
+    """ Given DB value of ACL convert it to Pyramid valid ACL. """
+    from .fields import ACLField
+    return ACLField.objectify_acl(acl)
