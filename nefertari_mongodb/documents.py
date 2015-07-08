@@ -74,7 +74,14 @@ TYPES_MAP = {
     mongo.fields.ObjectIdField: {'type': 'string'},
     ForeignKeyField: {'type': 'string'},
     IdField: {'type': 'string'},
-    ACLField: {'type': 'string'},
+    ACLField: {
+        'type': 'nested',
+        'properties': {
+            'action': {'type': 'string'},
+            'identifier': {'type': 'string'},
+            'permission': {'type': 'string'},
+        }
+    },
 
     BooleanField: {'type': 'boolean'},
     BinaryField: {'type': 'object'},

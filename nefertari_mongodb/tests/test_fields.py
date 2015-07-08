@@ -23,25 +23,25 @@ class TestACLField(object):
         expected = 'Invalid ACL action value: foobarbaz. Valid values are:'
         assert expected in str(ex.value)
 
-    def test_validate_permissions_valid(self):
+    def test_validate_permission_valid(self):
         obj = fields.ACLField()
         try:
-            obj._validate_permissions([fields.NEF_ACTIONS[0]])
+            obj._validate_permission(fields.NEF_ACTIONS[0])
         except ValueError:
             raise Exception('Unexpected error')
 
-    def test_validate_permissions_invalid(self):
+    def test_validate_permission_invalid(self):
         obj = fields.ACLField()
         with pytest.raises(ValueError) as ex:
-            obj._validate_permissions(['foobarbaz', fields.NEF_ACTIONS[0]])
-        expected = 'Invalid ACL permission values: foobarbaz. Valid values are:'
+            obj._validate_permission('foobarbaz')
+        expected = 'Invalid ACL permission value: foobarbaz. Valid values are:'
         assert expected in str(ex.value)
 
     @patch.object(fields.ACLField, '_validate_action')
-    @patch.object(fields.ACLField, '_validate_permissions')
+    @patch.object(fields.ACLField, '_validate_permission')
     def test_validate_acl(self, mock_perm, mock_action):
         obj = fields.ACLField()
-        obj.validate_acl([(1, 2, 3)])
+        obj.validate_acl([{'action': 1, 'identifier': 2, 'permission': 3}])
         mock_action.assert_called_once_with(1)
         mock_perm.assert_called_once_with(3)
 
@@ -79,9 +79,12 @@ class TestACLField(object):
         obj = fields.ACLField()
         mock_action.return_value = 1
         mock_id.return_value = 2
-        mock_perm.return_value = [3]
+        mock_perm.return_value = [3, 4]
         result = obj.stringify_acl([('a', 'b', 'c')])
-        assert result == [[1, 2, [3]]]
+        assert result == [
+            {'action': 1, 'identifier': 2, 'permission': 3},
+            {'action': 1, 'identifier': 2, 'permission': 4},
+        ]
         mock_action.assert_called_once_with('a')
         mock_id.assert_called_once_with('b')
         mock_perm.assert_called_once_with('c')
@@ -110,19 +113,21 @@ class TestACLField(object):
             'authenticated') is Authenticated
         assert fields.ACLField._objectify_identifier('foo') == 'foo'
 
-    def test_objectify_permissions(self):
-        assert fields.ACLField._objectify_permissions(
-            ['all']) == [ALL_PERMISSIONS]
-        assert fields.ACLField._objectify_permissions(['foo']) == ['foo']
+    def test_objectify_permission(self):
+        assert fields.ACLField._objectify_permission(
+            'all') == ALL_PERMISSIONS
+        assert fields.ACLField._objectify_permission('foo') == 'foo'
 
     @patch.object(fields.ACLField, '_objectify_action')
     @patch.object(fields.ACLField, '_objectify_identifier')
-    @patch.object(fields.ACLField, '_objectify_permissions')
+    @patch.object(fields.ACLField, '_objectify_permission')
     def test_objectify_acl(self, mock_perm, mock_id, mock_action):
         mock_action.return_value = 1
         mock_id.return_value = 2
         mock_perm.return_value = [3]
-        result = fields.ACLField.objectify_acl([('a', 'b', 'c')])
+        result = fields.ACLField.objectify_acl([
+            {'action': 'a', 'identifier': 'b', 'permission': 'c'}
+        ])
         assert result == [[1, 2, [3]]]
         mock_action.assert_called_once_with('a')
         mock_id.assert_called_once_with('b')

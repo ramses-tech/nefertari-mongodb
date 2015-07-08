@@ -84,7 +84,14 @@ class TestBaseMixin(object):
         assert MyModel.get_es_mapping() == {
             'mymodel': {
                 'properties': {
-                    '_acl': {'type': 'string'},
+                    '_acl': {
+                        'type': 'nested',
+                        'properties': {
+                            'action': {'type': 'string'},
+                            'identifier': {'type': 'string'},
+                            'permission': {'type': 'string'},
+                        },
+                    },
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'groups': {'type': 'long'},
@@ -100,7 +107,14 @@ class TestBaseMixin(object):
         assert MyModel2.get_es_mapping() == {
             'mymodel2': {
                 'properties': {
-                    '_acl': {'type': 'string'},
+                    '_acl': {
+                        'type': 'nested',
+                        'properties': {
+                            'action': {'type': 'string'},
+                            'identifier': {'type': 'string'},
+                            'permission': {'type': 'string'},
+                        },
+                    },
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'id': {'type': 'string'},
@@ -206,8 +220,9 @@ class TestBaseDocument(object):
         myobj._acl = [('allow', 'g:admin', 'all')]
         val = myobj.__acl__
         assert val == [(1, 2, 3)]
-        mock_objectify.assert_called_once_with(
-            [['allow', 'g:admin', ['all']]])
+        mock_objectify.assert_called_once_with([{
+            'action': 'allow', 'identifier': 'g:admin', 'permission': 'all'
+        }])
 
     def test_set_default_acl(self):
         class MyModel(docs.BaseDocument):
@@ -217,7 +232,11 @@ class TestBaseDocument(object):
         obj = MyModel()
         assert not obj._acl
         obj._set_default_acl()
-        assert obj._acl == [['allow', 'everyone', ['all']]]
+        assert obj._acl == [{
+            'action': 'allow',
+            'identifier': 'everyone',
+            'permission': 'all'
+        }]
 
     def test_set_default_acl_already_present(self):
         class MyModel(docs.BaseDocument):
@@ -225,9 +244,17 @@ class TestBaseDocument(object):
             name = fields.StringField()
 
         obj = MyModel()
-        obj._acl = [('deny', 'authenticated', 'show')]
+        obj._acl = [('deny', 'authenticated', ['show', 'create'])]
         obj._set_default_acl()
-        assert obj._acl == [['deny', 'authenticated', ['show']]]
+        assert obj._acl == [{
+            'action': 'deny',
+            'identifier': 'authenticated',
+            'permission': 'show'
+        }, {
+            'action': 'deny',
+            'identifier': 'authenticated',
+            'permission': 'create'
+        }]
 
     def test_set_default_acl_not_created(self):
         class MyModel(docs.BaseDocument):
