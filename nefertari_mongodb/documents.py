@@ -239,6 +239,7 @@ class BaseMixin(object):
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
         params[key] = ids
+        params['_limit'] = len(ids)
 
         if first:
             return cls.get_resource(**params)
