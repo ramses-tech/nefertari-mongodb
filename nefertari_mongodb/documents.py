@@ -232,7 +232,7 @@ class BaseMixin(object):
 
         Arguments:
             :object: Sequence of :cls: instances on which query should be run.
-            :params: Query parameters.
+            :params: Query parameters to filter :objects:.
         """
         id_name = cls.pk_field()
         key = '{}__in'.format(id_name)
