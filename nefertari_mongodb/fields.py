@@ -384,7 +384,10 @@ class ACLField(ProcessableMixin, BaseFieldMixin, fields.ListField):
         Authenticated: 'authenticated',
     }
     PERMISSIONS = {
-        ALL_PERMISSIONS: 'all',
+        str(ALL_PERMISSIONS): 'all',
+    }
+    PERMISSIONS_INVERTED = {
+        'all': ALL_PERMISSIONS,
     }
 
     def _validate_action(self, action):
@@ -447,7 +450,7 @@ class ACLField(ProcessableMixin, BaseFieldMixin, fields.ListField):
             except AttributeError:
                 pass
             clean_permissions.append(permission)
-        return [cls.PERMISSIONS.get(perm, perm)
+        return [cls.PERMISSIONS.get(str(perm), perm)
                 for perm in clean_permissions]
 
     @classmethod
@@ -499,8 +502,7 @@ class ACLField(ProcessableMixin, BaseFieldMixin, fields.ListField):
         """ Convert string representation if special Pyramid permission
         into valid Pyramid ACL permission objects.
         """
-        inverted_permissions = {v: k for k, v in cls.PERMISSIONS.items()}
-        return inverted_permissions.get(permission, permission)
+        return cls.PERMISSIONS_INVERTED.get(permission, permission)
 
     @classmethod
     def objectify_acl(cls, value):
