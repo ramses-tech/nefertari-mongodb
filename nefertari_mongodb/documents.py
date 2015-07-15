@@ -468,7 +468,7 @@ class BaseMixin(object):
             _data[attr] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        _dict['_pk'] = getattr(self, self.pk_field())
+        _dict['_pk'] = str(getattr(self, self.pk_field()))
         return _dict
 
     def get_reference_documents(self):
