@@ -232,13 +232,14 @@ class BaseMixin(object):
 
         Arguments:
             :object: Sequence of :cls: instances on which query should be run.
-            :params: Query parameters.
+            :params: Query parameters to filter :objects:.
         """
         id_name = cls.pk_field()
         key = '{}__in'.format(id_name)
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
         params[key] = ids
+        params['_limit'] = len(ids)
 
         if first:
             return cls.get_resource(**params)
