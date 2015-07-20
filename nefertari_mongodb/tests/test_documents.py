@@ -222,8 +222,8 @@ class TestBaseDocument(object):
         obj = MyModel(name='a', email='b')
         obj.apply_before_validation()
         processor.assert_has_calls([
-            call(instance=obj, new_value='b', field='email'),
-            call(instance=obj, new_value='a', field='name'),
+            call(instance=obj, new_value='b', field='email', request=None),
+            call(instance=obj, new_value='a', field='name', request=None),
         ], any_order=True)
         assert obj.name == 'Foo'
         assert obj.email == 'Foo'
@@ -245,7 +245,8 @@ class TestBaseDocument(object):
         obj._created = False
         obj.apply_before_validation()
         processor.assert_has_calls([
-            call(instance=obj, new_value='asdasd', field='name'),
+            call(instance=obj, new_value='asdasd',
+                 field='name', request=None),
         ], any_order=True)
         assert obj.name == 'Foo'
 
