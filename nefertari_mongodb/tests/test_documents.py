@@ -83,10 +83,10 @@ class TestBaseMixin(object):
         assert MyModel.get_es_mapping() == {
             'mymodel': {
                 'properties': {
+                    '_pk': {'type': 'string'},
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'groups': {'type': 'long'},
-                    'id': {'type': 'string'},
                     'my_id': {'type': 'string'},
                     'name': {'type': 'string'},
                     'parent': {'type': 'string'},
@@ -98,9 +98,9 @@ class TestBaseMixin(object):
         assert MyModel2.get_es_mapping() == {
             'mymodel2': {
                 'properties': {
+                    '_pk': {'type': 'string'},
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
-                    'id': {'type': 'string'},
                     'name': {'type': 'string'},
                     'child': {'type': 'object'},
                 }
@@ -334,3 +334,17 @@ class TestBaseDocument(object):
         assert obj.name is None
         obj.clean()
         assert obj.name == 'foo'
+
+    def test_to_dict(self):
+        class MyModel1(docs.BaseDocument):
+            id = fields.IdField()
+            name = fields.StringField(primary_key=True)
+
+        obj = MyModel1(name='foo')
+        assert obj.to_dict() == {
+            '_pk': 'foo',
+            '_type': 'MyModel1',
+            '_version': 0,
+            'id': 'foo',
+            'name': 'foo',
+        }

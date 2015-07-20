@@ -124,7 +124,6 @@ class BaseMixin(object):
             }
         }
         fields = cls._fields.copy()
-        fields['id'] = fields.get(cls.pk_field())
 
         for name, field in fields.items():
             if isinstance(field, RelationshipField):
@@ -147,6 +146,7 @@ class BaseMixin(object):
                 continue
             properties[name] = TYPES_MAP[field_type]
 
+        properties['_pk'] = {'type': 'string'}
         properties['_type'] = {'type': 'string'}
         return mapping
 
@@ -417,8 +417,8 @@ class BaseMixin(object):
     def __repr__(self):
         parts = ['%s:' % self.__class__.__name__]
 
-        if hasattr(self, 'id'):
-            parts.append('id=%s' % self.id)
+        pk_field = self.pk_field()
+        parts.append('{}={}'.format(pk_field, getattr(self, pk_field)))
 
         if hasattr(self, '_version'):
             parts.append('v=%s' % self._version)
@@ -457,9 +457,9 @@ class BaseMixin(object):
             return val
 
         _data = {}
-        for attr in self._data:
+        for attr, field_type in self._fields.items():
             # Ignore ForeignKeyField fields
-            if isinstance(self._fields.get(attr), ForeignKeyField):
+            if isinstance(field_type, ForeignKeyField):
                 continue
             value = getattr(self, attr, None)
             if isinstance(value, list):
@@ -469,7 +469,7 @@ class BaseMixin(object):
             _data[attr] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        _dict['id'] = getattr(self, self.pk_field())
+        _dict['_pk'] = str(getattr(self, self.pk_field()))
         return _dict
 
     def get_reference_documents(self):
