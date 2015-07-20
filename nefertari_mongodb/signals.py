@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 def on_post_save(sender, document, **kw):
     """ Add new document to index or update existing. """
     from nefertari.elasticsearch import ES
-    common_kw = {'request_params': getattr(document, '_request_params', None)}
+    common_kw = {'request': getattr(document, '_request', None)}
     created = kw.get('created', False)
     if created:
         es = ES(document.__class__.__name__)
@@ -24,12 +24,12 @@ def on_post_save(sender, document, **kw):
 
 def on_post_delete(sender, document, **kw):
     from nefertari.elasticsearch import ES
-    request_params = getattr(document, '_request_params', None)
+    request = getattr(document, '_request', None)
     ES(document.__class__.__name__).delete(
-        document.id, request_params=request_params)
+        document.id, request=request)
 
 
-def on_bulk_update(model_cls, objects, request_params):
+def on_bulk_update(model_cls, objects, request):
     if not getattr(model_cls, '_index_enabled', False):
         return
 
@@ -39,11 +39,11 @@ def on_bulk_update(model_cls, objects, request_params):
     from nefertari.elasticsearch import ES
     es = ES(source=model_cls.__name__)
     documents = to_dicts(objects)
-    es.index(documents, request_params=request_params)
+    es.index(documents, request=request)
 
     # Reindex relationships
     for obj in objects:
-        es.index_refs(obj, request_params=request_params)
+        es.index_refs(obj, request=request)
 
 
 def setup_es_signals_for(source_cls):
