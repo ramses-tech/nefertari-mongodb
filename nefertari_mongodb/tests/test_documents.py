@@ -222,8 +222,8 @@ class TestBaseDocument(object):
         obj = MyModel(name='a', email='b')
         obj.apply_before_validation()
         processor.assert_has_calls([
-            call(instance=obj, new_value='b'),
-            call(instance=obj, new_value='a'),
+            call(instance=obj, new_value='b', field='email'),
+            call(instance=obj, new_value='a', field='name'),
         ], any_order=True)
         assert obj.name == 'Foo'
         assert obj.email == 'Foo'
@@ -245,7 +245,7 @@ class TestBaseDocument(object):
         obj._created = False
         obj.apply_before_validation()
         processor.assert_has_calls([
-            call(instance=obj, new_value='asdasd'),
+            call(instance=obj, new_value='asdasd', field='name'),
         ], any_order=True)
         assert obj.name == 'Foo'
 
@@ -273,16 +273,16 @@ class TestBaseDocument(object):
             ['name'], before=True)
 
     def test_apply_processors(self):
-        def processor1(instance, new_value):
-            return new_value + '-'
+        def _processor_plus(**kwargs):
+            return kwargs['new_value'] + '+'
 
-        def processor2(instance, new_value):
-            return new_value + '+'
+        def _processor_minus(**kwargs):
+            return kwargs['new_value'] + '-'
 
         class MyModel(docs.BaseDocument):
             name = fields.StringField(
-                before_validation=[processor1],
-                after_validation=[processor2])
+                before_validation=[_processor_minus],
+                after_validation=[_processor_plus])
 
         obj = MyModel(name='foo')
         obj.apply_processors(before=True)

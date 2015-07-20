@@ -715,8 +715,10 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
             if hasattr(field, 'apply_processors'):
                 new_value = getattr(self, name)
                 processed_value = field.apply_processors(
+                    before=before, after=after,
                     instance=self, new_value=new_value,
-                    before=before, after=after)
+                    field=name,
+                )
                 setattr(self, name, processed_value)
 
     def apply_before_validation(self):
