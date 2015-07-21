@@ -133,7 +133,6 @@ class BaseMixin(object):
             }
         }
         fields = cls._fields.copy()
-        fields['id'] = fields.get(cls.pk_field())
 
         for name, field in fields.items():
             if isinstance(field, RelationshipField):
@@ -156,6 +155,7 @@ class BaseMixin(object):
                 continue
             properties[name] = TYPES_MAP[field_type]
 
+        properties['_pk'] = {'type': 'string'}
         properties['_type'] = {'type': 'string'}
         return mapping
 
@@ -397,15 +397,15 @@ class BaseMixin(object):
         return self.save(**kw)
 
     @classmethod
-    def _delete_many(cls, items, request_params=None):
+    def _delete_many(cls, items, request=None):
         """ Delete objects from :items: """
         items_count = len(items)
         for item in items:
-            item.delete(request_params)
+            item.delete(request)
         return items_count
 
     @classmethod
-    def _update_many(cls, items, params, request_params=None):
+    def _update_many(cls, items, params, request=None):
         """ Update objects from :items:
 
         If :items: is an instance of `mongoengine.queryset.queryset.QuerySet`
@@ -416,18 +416,18 @@ class BaseMixin(object):
         """
         if isinstance(items, mongo.queryset.queryset.QuerySet):
             items.update(**params)
-            on_bulk_update(cls, items, request_params)
+            on_bulk_update(cls, items, request)
             return cls.count(items)
         items_count = len(items)
         for item in items:
-            item.update(params, request_params)
+            item.update(params, request)
         return items_count
 
     def __repr__(self):
         parts = ['%s:' % self.__class__.__name__]
 
-        if hasattr(self, 'id'):
-            parts.append('id=%s' % self.id)
+        pk_field = self.pk_field()
+        parts.append('{}={}'.format(pk_field, getattr(self, pk_field)))
 
         if hasattr(self, '_version'):
             parts.append('v=%s' % self._version)
@@ -469,9 +469,9 @@ class BaseMixin(object):
             return val
 
         _data = {}
-        for attr in self._data:
+        for attr, field_type in self._fields.items():
             # Ignore ForeignKeyField fields
-            if isinstance(self._fields.get(attr), ForeignKeyField):
+            if isinstance(field_type, ForeignKeyField):
                 continue
             value = getattr(self, attr, None)
             if isinstance(value, list):
@@ -481,7 +481,7 @@ class BaseMixin(object):
             _data[attr] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        _dict['id'] = getattr(self, self.pk_field())
+        _dict['_pk'] = str(getattr(self, self.pk_field()))
         return _dict
 
     def get_reference_documents(self):
@@ -497,7 +497,7 @@ class BaseMixin(object):
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
-                         request_params=None):
+                         request=None):
         is_dict = isinstance(type(self)._fields[attr], mongo.DictField)
         is_list = isinstance(type(self)._fields[attr], mongo.ListField)
 
@@ -534,7 +534,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save(request_params)
+                self.save(request)
 
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
@@ -563,7 +563,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save(request_params)
+                self.save(request)
 
         if is_dict:
             update_dict(params)
@@ -661,7 +661,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         if self._created and not self._acl:
             self._acl = self.__item_acl__
 
-    def save(self, request_params=None, *arg, **kw):
+    def save(self, request=None, *arg, **kw):
         """
         Force insert document in creation so that unique constraits are
         respected.
@@ -669,7 +669,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         (as opposed to an 'update' for example).
         """
         kw['force_insert'] = self._created
-        self._request_params = request_params
+        self._request = request
         self._bump_version()
         self._set_default_acl()
         try:
@@ -697,9 +697,9 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         for hook in self._backref_hooks:
             hook(document=self)
 
-    def update(self, params, request_params=None, **kw):
-        kw['request_params'] = request_params
-        # request_params are passed to _update and then to save
+    def update(self, params, request=None, **kw):
+        kw['request'] = request
+        # request are passed to _update and then to save
         try:
             return self._update(params, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
@@ -722,8 +722,8 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
                 extra={'data': e})
 
-    def delete(self, request_params=None, **kw):
-        self._request_params = request_params
+    def delete(self, request=None, **kw):
+        self._request = request
         super(BaseDocument, self).delete(**kw)
 
     def apply_processors(self, field_names=None, before=False, after=False):
@@ -743,9 +743,14 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
             field = self._fields[name]
             if hasattr(field, 'apply_processors'):
                 new_value = getattr(self, name)
+                proc_kwargs = {
+                    'new_value': new_value,
+                    'instance': self,
+                    'field': name,
+                    'request': getattr(self, '_request', None),
+                }
                 processed_value = field.apply_processors(
-                    instance=self, new_value=new_value,
-                    before=before, after=after)
+                    before=before, after=after, **proc_kwargs)
                 setattr(self, name, processed_value)
 
     def apply_before_validation(self):

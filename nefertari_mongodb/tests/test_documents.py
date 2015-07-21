@@ -92,10 +92,10 @@ class TestBaseMixin(object):
                             'permission': {'type': 'string'},
                         },
                     },
+                    '_pk': {'type': 'string'},
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'groups': {'type': 'long'},
-                    'id': {'type': 'string'},
                     'my_id': {'type': 'string'},
                     'name': {'type': 'string'},
                     'parent': {'type': 'string'},
@@ -115,9 +115,9 @@ class TestBaseMixin(object):
                             'permission': {'type': 'string'},
                         },
                     },
+                    '_pk': {'type': 'string'},
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
-                    'id': {'type': 'string'},
                     'name': {'type': 'string'},
                     'child': {'type': 'object'},
                 }
@@ -296,8 +296,8 @@ class TestBaseDocument(object):
         obj = MyModel(name='a', email='b')
         obj.apply_before_validation()
         processor.assert_has_calls([
-            call(instance=obj, new_value='b'),
-            call(instance=obj, new_value='a'),
+            call(instance=obj, new_value='b', field='email', request=None),
+            call(instance=obj, new_value='a', field='name', request=None),
         ], any_order=True)
         assert obj.name == 'Foo'
         assert obj.email == 'Foo'
@@ -319,7 +319,8 @@ class TestBaseDocument(object):
         obj._created = False
         obj.apply_before_validation()
         processor.assert_has_calls([
-            call(instance=obj, new_value='asdasd'),
+            call(instance=obj, new_value='asdasd',
+                 field='name', request=None),
         ], any_order=True)
         assert obj.name == 'Foo'
 
@@ -347,16 +348,16 @@ class TestBaseDocument(object):
             ['name'], before=True)
 
     def test_apply_processors(self):
-        def processor1(instance, new_value):
-            return new_value + '-'
+        def _processor_plus(**kwargs):
+            return kwargs['new_value'] + '+'
 
-        def processor2(instance, new_value):
-            return new_value + '+'
+        def _processor_minus(**kwargs):
+            return kwargs['new_value'] + '-'
 
         class MyModel(docs.BaseDocument):
             name = fields.StringField(
-                before_validation=[processor1],
-                after_validation=[processor2])
+                before_validation=[_processor_minus],
+                after_validation=[_processor_plus])
 
         obj = MyModel(name='foo')
         obj.apply_processors(before=True)
@@ -406,3 +407,18 @@ class TestBaseDocument(object):
         assert obj.name is None
         obj.clean()
         assert obj.name == 'foo'
+
+    def test_to_dict(self):
+        class MyModel1(docs.BaseDocument):
+            id = fields.IdField()
+            name = fields.StringField(primary_key=True)
+
+        obj = MyModel1(name='foo')
+        assert obj.to_dict() == {
+            '_acl': [],
+            '_pk': 'foo',
+            '_type': 'MyModel1',
+            '_version': 0,
+            'id': 'foo',
+            'name': 'foo',
+        }
