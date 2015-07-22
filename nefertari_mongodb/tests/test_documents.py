@@ -84,7 +84,6 @@ class TestBaseMixin(object):
             'mymodel': {
                 'properties': {
                     '_pk': {'type': 'string'},
-                    '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'groups': {'type': 'long'},
                     'my_id': {'type': 'string'},
@@ -99,7 +98,6 @@ class TestBaseMixin(object):
             'mymodel2': {
                 'properties': {
                     '_pk': {'type': 'string'},
-                    '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'name': {'type': 'string'},
                     'child': {'type': 'object'},
