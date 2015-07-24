@@ -547,7 +547,7 @@ class ForeignKeyField(BaseFieldMixin, fields.StringField):
     _valid_kwargs = ()
 
 
-class ReferenceField(BaseFieldMixin, fields.ReferenceField):
+class ReferenceField(ProcessableMixin, BaseFieldMixin, fields.ReferenceField):
     """ Field that references another document.
 
     This isn't meant to be used explicitly by the user. To create a
@@ -564,7 +564,10 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
         Used when generating backreferences so that fields on each side
         know the name of the field on the other side.
     """
-    _valid_kwargs = ('document_type', 'dbref', 'reverse_delete_rule')
+    _valid_kwargs = (
+        'document_type', 'dbref', 'reverse_delete_rule',
+        'before_validation', 'after_validation',
+    )
     _kwargs_prefix = 'ref_'
     _backref_prefix = 'backref_'
     reverse_rel_field = None
@@ -577,6 +580,7 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
         Expects:
             `document` or `<_kwargs_prefix>document`: mongoengine model name.
         """
+        backref_prefix_len = len(self._backref_prefix)
         key = 'document'
         pref_key = self._kwargs_prefix + key
         document_type = kwargs.pop(pref_key, None) or kwargs.pop(key, None)
@@ -584,7 +588,7 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
 
         # Filter out backreference kwargs
         self.backref_kwargs = {
-            k[len(self._backref_prefix):]: v for k, v in kwargs.items()
+            k[backref_prefix_len:]: v for k, v in kwargs.items()
             if k.startswith(self._backref_prefix)}
 
         super(ReferenceField, self).__init__(*args, **kwargs)
@@ -742,6 +746,7 @@ class RelationshipField(ProcessableMixin, BaseFieldMixin, fields.ListField):
         'db_field', 'required', 'default', 'unique',
         'unique_with', 'primary_key', 'validation', 'choices',
         'verbose_name', 'help_text', 'sparse',
+        'before_validation', 'after_validation',
     )
     _backref_prefix = 'backref_'
     reverse_rel_field = None
