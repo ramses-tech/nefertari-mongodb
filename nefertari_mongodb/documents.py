@@ -322,8 +322,8 @@ class BaseMixin(object):
                 raise JHTTPNotFound(msg, explanation=ex.message)
             else:
                 raise JHTTPBadRequest(str(ex), extra={'data': ex})
-        except mongo.InvalidQueryError as e:
-            raise JHTTPBadRequest(str(e), extra={'data': e})
+        except mongo.InvalidQueryError as ex:
+            raise JHTTPBadRequest(str(ex), extra={'data': ex})
 
         if _explain:
             return query_set.explain()
