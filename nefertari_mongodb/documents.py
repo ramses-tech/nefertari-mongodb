@@ -315,7 +315,10 @@ class BaseMixin(object):
                 else:
                     log.debug(msg)
 
-        except (mongo.ValidationError, mongo.InvalidQueryError) as e:
+        except mongo.ValidationError as ex:
+            msg = "'%s(%s)' resource not found" % (cls.__name__, params)
+            raise JHTTPNotFound(msg, explanation=ex.message)
+        except mongo.InvalidQueryError as e:
             raise JHTTPBadRequest(str(e), extra={'data': e})
 
         if _explain:
