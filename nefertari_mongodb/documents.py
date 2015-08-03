@@ -9,6 +9,7 @@ from nefertari.json_httpexceptions import (
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset, DataProxy,
     to_dicts)
+
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .signals import on_bulk_update
 from .fields import (
@@ -17,7 +18,7 @@ from .fields import (
     TextField, UnicodeField, UnicodeTextField,
     IdField, BooleanField, BinaryField, DecimalField, FloatField,
     BigIntegerField, SmallIntegerField, IntervalField, DateField,
-    TimeField, BaseFieldMixin
+    TimeField, BaseFieldMixin, ACLField,
 )
 
 
@@ -72,6 +73,14 @@ TYPES_MAP = {
     mongo.fields.ObjectIdField: {'type': 'string'},
     ForeignKeyField: {'type': 'string'},
     IdField: {'type': 'string'},
+    ACLField: {
+        'type': 'nested',
+        'properties': {
+            'action': {'type': 'string'},
+            'identifier': {'type': 'string', 'index': 'not_analyzed'},
+            'permission': {'type': 'string'},
+        }
+    },
 
     BooleanField: {'type': 'boolean'},
     BinaryField: {'type': 'object'},
@@ -444,8 +453,11 @@ class BaseMixin(object):
     @classmethod
     def get_null_values(cls):
         """ Get null values of :cls: fields. """
+        skip_fields = {'_version', '_acl'}
         null_values = {}
         for name in cls._fields.keys():
+            if name in skip_fields:
+                continue
             field = getattr(cls, name)
             if isinstance(field, RelationshipField):
                 value = []
@@ -605,11 +617,13 @@ class BaseMixin(object):
 
 class BaseDocument(six.with_metaclass(DocumentMetaclass,
                                       BaseMixin, mongo.Document)):
-    _version = IntegerField(default=0)
-
     meta = {
         'abstract': True,
     }
+    __item_acl__ = None
+
+    _version = IntegerField(default=0)
+    _acl = ACLField()
 
     def __init__(self, *args, **values):
         """ Override init to filter out invalid fields from :values:.
@@ -636,9 +650,23 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
                       if key in valid_fields}
         super(BaseDocument, self).__init__(*args, **values)
 
+    @property
+    def __acl__(self):
+        """ Convert stored ACL to valid Pyramid ACL. """
+        acl = ACLField.objectify_acl(self._acl)
+        log.info('Loaded ACL from database for {}({}): {}'.format(
+            self.__class__.__name__,
+            getattr(self, self.pk_field()), acl))
+        return acl
+
     def _bump_version(self):
         if self._is_modified():
             self._version += 1
+
+    def _set_default_acl(self):
+        """ Set default object ACL if not already set. """
+        if self._created and not self._acl:
+            self._acl = self.__item_acl__
 
     def save(self, request=None, *arg, **kw):
         """
@@ -650,6 +678,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         kw['force_insert'] = self._created
         self._request = request
         self._bump_version()
+        self._set_default_acl()
         try:
             super(BaseDocument, self).save(*arg, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
