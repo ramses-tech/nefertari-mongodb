@@ -16,7 +16,6 @@ def on_post_save(sender, document, **kw):
         es = ES(document.__class__.__name__)
         es.index(document.to_dict(), **common_kw)
     elif not created and document._get_changed_fields():
-        document.reload()
         es = ES(document.__class__.__name__)
         es.index(document.to_dict(), **common_kw)
         es.index_refs(document, **common_kw)
