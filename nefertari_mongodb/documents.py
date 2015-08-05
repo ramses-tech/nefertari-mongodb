@@ -264,6 +264,7 @@ class BaseMixin(object):
         log.debug('Get collection: {}, {}'.format(cls.__name__, params))
         params.pop('__confirmation', False)
         __strict = params.pop('__strict', True)
+        _item_request = params.pop('_item_request', False)
 
         _sort = _split(params.pop('_sort', []))
         _fields = _split(params.pop('_fields', []))
@@ -324,8 +325,14 @@ class BaseMixin(object):
                 else:
                     log.debug(msg)
 
-        except (mongo.ValidationError, mongo.InvalidQueryError) as e:
-            raise JHTTPBadRequest(str(e), extra={'data': e})
+        except mongo.ValidationError as ex:
+            if _item_request:
+                msg = "'%s(%s)' resource not found" % (cls.__name__, params)
+                raise JHTTPNotFound(msg, explanation=ex.message)
+            else:
+                raise JHTTPBadRequest(str(ex), extra={'data': ex})
+        except mongo.InvalidQueryError as ex:
+            raise JHTTPBadRequest(str(ex), extra={'data': ex})
 
         if _explain:
             return query_set.explain()
@@ -354,6 +361,7 @@ class BaseMixin(object):
     def get_resource(cls, **params):
         params.setdefault('__raise_on_empty', True)
         params['_limit'] = 1
+        params['_item_request'] = True
         query_set = cls.get_collection(**params)
         return query_set.first()
 
