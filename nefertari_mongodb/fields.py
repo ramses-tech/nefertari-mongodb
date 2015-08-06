@@ -550,8 +550,8 @@ class ForeignKeyField(BaseFieldMixin, fields.StringField):
 class ReferenceField(ProcessableMixin, BaseFieldMixin, fields.ReferenceField):
     """ Field that references another document.
 
-    This isn't meant to be used explicitly by the user. To create a
-    relationship field, use the `Relationship` constructor function.
+    **It ISN'T MEANT to be used explicitly by the user. To create a
+    relationship field, use the `Relationship` constructor function.**
 
     When this field is not added to a model's `_nested_relationships`, this
     field returns an ID of the document that is being referenced. Otherwise
@@ -732,6 +732,9 @@ class ReferenceField(ProcessableMixin, BaseFieldMixin, fields.ReferenceField):
 
 class RelationshipField(ProcessableMixin, BaseFieldMixin, fields.ListField):
     """ Relationship field meant to be used to create one-to-many relationships.
+
+    **It ISN'T MEANT to be used by users explicitly. To create a
+    relationship field, use the `Relationship` constructor function.**
 
     It is used in the `Relationship` function to generate one-to-many
     relationships. Under the hood it is just a ListField containing
