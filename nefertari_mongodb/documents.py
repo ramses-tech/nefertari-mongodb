@@ -767,6 +767,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
 
 
 class ESBaseDocument(six.with_metaclass(ESMetaclass, BaseDocument)):
+    """ Base for document classes which should be indexed by ES. """
     meta = {
         'abstract': True,
     }
