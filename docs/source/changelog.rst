@@ -1,6 +1,9 @@
 Changelog
 =========
 
+* :release:`0.3.2 <2015-08-x>`
+* :bug:`-` Fixed outdated data in nested relationships of PATCH responses
+
 * :release:`0.3.1 <2015-07-07>`
 * :bug:`-` Fixed a bug with unicode in StringField
 * :bug:`-` Fixed bug with Elasticsearch re-indexing of nested relationships
