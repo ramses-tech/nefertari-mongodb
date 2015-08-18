@@ -8,7 +8,7 @@ from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset, DataProxy,
-    to_dicts)
+    to_dicts, drop_reserved_params)
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .signals import on_bulk_update
 from .fields import (
@@ -279,6 +279,7 @@ class BaseMixin(object):
             if not key.startswith('__')
         })
 
+        params = drop_reserved_params(params)
         if __strict:
             _check_fields = [
                 f.strip('-+') for f in list(params.keys()) + _fields + _sort]
