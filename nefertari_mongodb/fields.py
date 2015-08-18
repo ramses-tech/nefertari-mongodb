@@ -163,6 +163,15 @@ class DateTimeField(ProcessableMixin, BaseFieldMixin, fields.DateTimeField):
 class FloatField(ProcessableMixin, BaseFieldMixin, fields.FloatField):
     _valid_kwargs = ('min_value', 'max_value')
 
+    def validate(self, value):
+        """ Override to try to convert string values to floats. """
+        if isinstance(value, six.string_types):
+            try:
+                value = float(value)
+            except ValueError:
+                pass
+        return super(FloatField, self).validate(value)
+
 
 class StringField(ProcessableMixin, BaseFieldMixin, fields.StringField):
     _valid_kwargs = ('regex', 'min_length', 'max_length')
