@@ -34,6 +34,7 @@ class BaseFieldMixin(object):
 
     def __init__(self, *args, **kwargs):
         """ Translate kwargs and drop invalid kwargs. """
+        self._init_kwargs = kwargs.copy()
         kwargs = self.translate_kwargs(kwargs)
         kwargs = self.drop_invalid_kwargs(kwargs)
         self.onupdate = kwargs.pop('onupdate', None)
@@ -94,6 +95,9 @@ class ProcessableMixin(object):
         self.before_validation = kwargs.pop('before_validation', ())
         self.after_validation = kwargs.pop('after_validation', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
+        self._init_kwargs.update(
+            before_validation=self.before_validation,
+            after_validation=self.after_validation)
 
     def apply_processors(self, before=False, after=False, **proc_kwargs):
         processors = []
@@ -189,6 +193,7 @@ class ChoiceField(ProcessableMixin, fields.BaseField):
     attribute access to the underlying field.
     """
     def __init__(self, *args, **kwargs):
+        self._init_kwargs = kwargs.copy()
         first_choice = kwargs['choices'][0]
         if isinstance(first_choice, int):
             self._real_field = IntegerField(*args, **kwargs)
@@ -205,8 +210,8 @@ class ChoiceField(ProcessableMixin, fields.BaseField):
         self.__dict__.update(self._real_field.__dict__)
 
     def __getattribute__(self, attr):
-        methods = ('to_python', 'to_mongo', 'prepare_query_value',
-                   'validate', 'lookup_member')
+        methods = {'to_python', 'to_mongo', 'prepare_query_value',
+                   'validate', 'lookup_member'}
         if attr in methods:
             return self._real_field.__getattribute__(attr)
         return super(ChoiceField, self).__getattribute__(attr)
@@ -350,6 +355,9 @@ class ListField(ProcessableMixin, BaseFieldMixin, fields.ListField):
         self.list_choices = kwargs.pop('choices', None)
         self.item_type = kwargs.pop('item_type')
         super(ListField, self).__init__(*args, **kwargs)
+        self._init_kwargs.update(
+            list_choices=self.list_choices,
+            item_type=self.item_type)
 
     def validate(self, value, **kwargs):
         super(ListField, self).validate(value, **kwargs)
@@ -420,6 +428,7 @@ class ReferenceField(ProcessableMixin, BaseFieldMixin, fields.ReferenceField):
         Expects:
             `document` or `<_kwargs_prefix>document`: mongoengine model name.
         """
+        _init_kwargs = kwargs.copy()
         backref_prefix_len = len(self._backref_prefix)
         key = 'document'
         pref_key = self._kwargs_prefix + key
@@ -432,6 +441,7 @@ class ReferenceField(ProcessableMixin, BaseFieldMixin, fields.ReferenceField):
             if k.startswith(self._backref_prefix)}
 
         super(ReferenceField, self).__init__(*args, **kwargs)
+        self._init_kwargs = _init_kwargs
 
     def _register_deletion_hook(self, old_object, instance):
         """ Register a backref hook to delete the `instance` from the
