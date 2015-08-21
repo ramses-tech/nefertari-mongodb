@@ -224,7 +224,7 @@ class TestBaseDocument(object):
 
     def test_set_default_acl(self):
         class MyModel(docs.BaseDocument):
-            __item_acl__ = [(Allow, Everyone, ALL_PERMISSIONS)]
+            __item_acl__ = ((Allow, Everyone, ALL_PERMISSIONS),)
             name = fields.StringField()
 
         obj = MyModel()
@@ -238,7 +238,7 @@ class TestBaseDocument(object):
 
     def test_set_default_acl_already_present(self):
         class MyModel(docs.BaseDocument):
-            __item_acl__ = [(Allow, Everyone, ALL_PERMISSIONS)]
+            __item_acl__ = ((Allow, Everyone, ALL_PERMISSIONS),)
             name = fields.StringField()
 
         obj = MyModel()
@@ -256,7 +256,7 @@ class TestBaseDocument(object):
 
     def test_set_default_acl_not_created(self):
         class MyModel(docs.BaseDocument):
-            __item_acl__ = [(Allow, Everyone, ALL_PERMISSIONS)]
+            __item_acl__ = ((Allow, Everyone, ALL_PERMISSIONS),)
             name = fields.StringField()
 
         obj = MyModel()

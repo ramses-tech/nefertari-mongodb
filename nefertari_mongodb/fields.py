@@ -520,7 +520,7 @@ class ACLField(ProcessableMixin, BaseFieldMixin, fields.ListField):
         """ Convert Pyramid ACL objects into string representation,
         validate and store in mongo.
         """
-        valid_value = value and isinstance(value, list)
+        valid_value = value and isinstance(value, (list, tuple))
         if valid_value and isinstance(value[0], (list, tuple, dict)):
             value = self.stringify_acl(value)
             self.validate_acl(value)
