@@ -456,10 +456,13 @@ class BaseMixin(object):
         return null_values
 
     def to_dict(self, **kwargs):
+        __depth = kwargs.get('__depth')
+        depth_reached = __depth is not None and __depth <= 0
+
         def _process(key, val):
             is_doc = isinstance(val, mongo.Document)
             include = key in self._nested_relationships
-            if is_doc and not include:
+            if is_doc and (not include or depth_reached):
                 val = getattr(val, val.pk_field(), None)
             return val
 
