@@ -238,7 +238,6 @@ class BaseMixin(object):
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
         params[key] = ids
-        params['_limit'] = len(ids)
 
         if first:
             return cls.get_resource(**params)
@@ -298,16 +297,14 @@ class BaseMixin(object):
             if _count:
                 return _total
 
-            if _limit is None:
-                raise JHTTPBadRequest('Missing _limit')
-
-            _start, _limit = process_limit(_start, _page, _limit)
-
             # Filtering by fields has to be the first thing to do on the
             # query_set!
             query_set = cls.apply_fields(query_set, _fields)
             query_set = cls.apply_sort(query_set, _sort)
-            query_set = query_set[_start:_start+_limit]
+
+            if _limit is not None:
+                _start, _limit = process_limit(_start, _page, _limit)
+                query_set = query_set[_start:_start+_limit]
 
             if not query_set.count():
                 msg = "'%s(%s)' resource not found" % (cls.__name__, params)
@@ -437,7 +434,6 @@ class BaseMixin(object):
         pk_field = '{}__in'.format(cls.pk_field())
         params.update({
             pk_field: ids,
-            '_limit': len(ids),
         })
         return cls.get_collection(**params)
 
