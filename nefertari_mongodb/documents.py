@@ -19,6 +19,7 @@ from .fields import (
     BigIntegerField, SmallIntegerField, IntervalField, DateField,
     TimeField, BaseFieldMixin
 )
+from .utils import FieldData
 
 
 log = logging.getLogger(__name__)
@@ -724,10 +725,14 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
             field = self._fields[name]
             if hasattr(field, 'apply_processors'):
                 new_value = getattr(self, name)
+                field_data = FieldData(
+                    name=name,
+                    params=getattr(field, '_init_kwargs', None),
+                )
                 proc_kwargs = {
                     'new_value': new_value,
                     'instance': self,
-                    'field': name,
+                    'field': field_data,
                     'request': getattr(self, '_request', None),
                 }
                 processed_value = field.apply_processors(

@@ -207,7 +207,8 @@ class TestBaseDocument(object):
         except FieldDoesNotExist:
             raise Exception('Unexpected error')
 
-    def test_apply_before_validation_new_object(self):
+    @patch.object(docs, 'FieldData')
+    def test_apply_before_validation_new_object(self, mock_field):
         processor = Mock(return_value='Foo')
         processor2 = Mock(return_value='BarFoo')
 
@@ -220,13 +221,22 @@ class TestBaseDocument(object):
         obj = MyModel(name='a', email='b')
         obj.apply_before_validation()
         processor.assert_has_calls([
-            call(instance=obj, new_value='b', field='email', request=None),
-            call(instance=obj, new_value='a', field='name', request=None),
+            call(instance=obj, new_value='b', field=mock_field(), request=None),
+            call(instance=obj, new_value='a', field=mock_field(), request=None),
+        ], any_order=True)
+        mock_field.assert_has_calls([
+            call(params={'before_validation': [processor],
+                         'after_validation': [processor2]},
+                 name='name'),
+            call(params={'before_validation': [processor],
+                         'after_validation': ()},
+                 name='email')
         ], any_order=True)
         assert obj.name == 'Foo'
         assert obj.email == 'Foo'
 
-    def test_apply_before_validation_updated_object(self):
+    @patch.object(docs, 'FieldData')
+    def test_apply_before_validation_updated_object(self, mock_field):
         processor = Mock(return_value='Foo')
         processor2 = Mock(return_value='BarFoo')
 
@@ -244,8 +254,13 @@ class TestBaseDocument(object):
         obj.apply_before_validation()
         processor.assert_has_calls([
             call(instance=obj, new_value='asdasd',
-                 field='name', request=None),
+                 field=mock_field(), request=None),
         ], any_order=True)
+        mock_field.assert_has_calls([
+            call(params={'before_validation': [processor],
+                         'after_validation': [processor2]},
+                 name='name')
+        ])
         assert obj.name == 'Foo'
 
     def test_apply_after_validation(self):
