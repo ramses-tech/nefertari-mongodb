@@ -488,12 +488,12 @@ class BaseMixin(object):
 
         for field_name in relationship_fields:
             value = getattr(self, field_name)
-            if value:
-                if not isinstance(value, list):
-                    value = [value]
-                value_type = value[0].__class__
-                documents = [val.to_dict() for val in value]
-                yield (value_type, documents)
+            if not value:
+                return
+            if not isinstance(value, list):
+                value = [value]
+            value_type = value[0].__class__
+            yield (value_type, value)
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
