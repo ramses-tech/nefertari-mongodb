@@ -18,7 +18,7 @@ def on_post_save(sender, document, **kw):
     elif not created and document._get_changed_fields():
         es = ES(document.__class__.__name__)
         es.index(document.to_dict(), **common_kw)
-        es.index_relations(document, **common_kw)
+        es.index_relations(document, nested_only=True, **common_kw)
 
 
 def on_post_delete(sender, document, **kw):
@@ -42,7 +42,7 @@ def on_bulk_update(model_cls, objects, request):
 
     # Reindex relationships
     for obj in objects:
-        es.index_relations(obj, request=request)
+        es.index_relations(obj, request=request, nested_only=True)
 
 
 def setup_es_signals_for(source_cls):

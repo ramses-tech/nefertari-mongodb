@@ -481,19 +481,35 @@ class BaseMixin(object):
         _dict['_pk'] = str(getattr(self, self.pk_field()))
         return _dict
 
-    def get_related_documents(self):
-        relationship_fields = [
-            name for name, field in self._fields.items()
-            if isinstance(field, (ReferenceField, RelationshipField))]
+    def get_related_documents(self, nested_only=False):
+        """ Return pairs of (Model, istances) of relationship fields.
 
-        for field_name in relationship_fields:
-            value = getattr(self, field_name)
+        Pair contains of two elements:
+          :Model: Model class object(s) contained in field.
+          :instances: Model class instance(s) contained in field
+
+        :param nested_only: Boolean, defaults to False. When True, return
+            results only contain data for models on which current model
+            and field are nested.
+        """
+        relationship_fields = {
+            name: field for name, field in self._fields.items()
+            if isinstance(field, (ReferenceField, RelationshipField))}
+
+        for name, field in relationship_fields.items():
+            value = getattr(self, name)
             if not value:
-                return
+                continue
             if not isinstance(value, list):
                 value = [value]
-            value_type = value[0].__class__
-            yield (value_type, value)
+            model_cls = value[0].__class__
+
+            if nested_only:
+                backref = getattr(field, 'reverse_rel_field', None)
+                if backref and backref not in model_cls._nested_relationships:
+                    continue
+
+            yield (model_cls, value)
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
