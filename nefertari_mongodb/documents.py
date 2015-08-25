@@ -7,8 +7,7 @@ import mongoengine as mongo
 from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
-    process_fields, process_limit, _split, dictset, DataProxy,
-    to_dicts)
+    process_fields, process_limit, _split, dictset, DataProxy)
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .signals import on_bulk_update
 from .fields import (
@@ -482,16 +481,19 @@ class BaseMixin(object):
         _dict['_pk'] = str(getattr(self, self.pk_field()))
         return _dict
 
-    def get_reference_documents(self):
-        models = []
-        for name, field in self._fields.items():
-            if isinstance(field, ReferenceField):
-                pair = (field.document_type, field.reverse_rel_field)
-                models.append(pair)
+    def get_related_documents(self):
+        relationship_fields = [
+            name for name, field in self._fields.items()
+            if isinstance(field, (ReferenceField, RelationshipField))]
 
-        for model_cls, key in models:
-            documents = to_dicts(model_cls.objects(**{key: self}))
-            yield model_cls, documents
+        for field_name in relationship_fields:
+            value = getattr(self, field_name)
+            if value:
+                if not isinstance(value, list):
+                    value = [value]
+                value_type = value[0].__class__
+                documents = [val.to_dict() for val in value]
+                yield (value_type, documents)
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
