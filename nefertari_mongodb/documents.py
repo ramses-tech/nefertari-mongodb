@@ -708,6 +708,12 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         self._request = request
         super(BaseDocument, self).delete(**kw)
 
+    @classmethod
+    def get_field_params(cls, field_name):
+        """ Get init params of field named :field_name:. """
+        field = cls._fields[field_name]
+        return getattr(field, '_init_kwargs', None)
+
     def apply_processors(self, field_names=None, before=False, after=False):
         """ Apply processors to fields with :field_names: names.
 
