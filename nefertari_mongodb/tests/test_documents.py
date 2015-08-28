@@ -209,14 +209,14 @@ class TestBaseMixin(object):
 class TestBaseDocument(object):
 
     @patch('nefertari_mongodb.fields.ACLField.objectify_acl')
-    def test_dunder_acl(self, mock_objectify):
+    def test_get_acl(self, mock_objectify):
         class MyModel(docs.BaseDocument):
             name = fields.StringField()
 
         mock_objectify.return_value = [(1, 2, 3)]
         myobj = MyModel()
         myobj._acl = [('allow', 'g:admin', 'all')]
-        val = myobj.__acl__
+        val = myobj.get_acl()
         assert val == [(1, 2, 3)]
         mock_objectify.assert_called_once_with([{
             'action': 'allow', 'identifier': 'g:admin', 'permission': 'all'
