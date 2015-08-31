@@ -676,6 +676,10 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
                       if key in valid_fields}
         super(BaseDocument, self).__init__(*args, **values)
 
+    @classmethod
+    def default_item_acl(cls):
+        return cls.__item_acl__
+
     def get_acl(self):
         """ Convert stored ACL to valid Pyramid ACL. """
         acl = ACLField.objectify_acl(self._acl)
@@ -691,7 +695,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
     def _set_default_acl(self):
         """ Set default object ACL if not already set. """
         if self._is_created() and not self._acl:
-            self._acl = self.__item_acl__
+            self._acl = self.default_item_acl()
 
     def save(self, request=None, *arg, **kw):
         """
