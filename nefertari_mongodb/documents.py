@@ -8,7 +8,7 @@ from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset, DataProxy,
-    to_dicts, drop_reserved_params)
+    drop_reserved_params)
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .signals import on_bulk_update
 from .fields import (
@@ -646,10 +646,8 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
     meta = {
         'abstract': True,
     }
-    __item_acl__ = None
 
     _version = IntegerField(default=0)
-    _acl = ACLField()
 
     def __init__(self, *args, **values):
         """ Override init to filter out invalid fields from :values:.
@@ -676,26 +674,9 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
                       if key in valid_fields}
         super(BaseDocument, self).__init__(*args, **values)
 
-    @classmethod
-    def default_item_acl(cls):
-        return cls.__item_acl__
-
-    def get_acl(self):
-        """ Convert stored ACL to valid Pyramid ACL. """
-        acl = ACLField.objectify_acl(self._acl)
-        log.info('Loaded ACL from database for {}({}): {}'.format(
-            self.__class__.__name__,
-            getattr(self, self.pk_field()), acl))
-        return acl
-
     def _bump_version(self):
         if self._is_modified():
             self._version += 1
-
-    def _set_default_acl(self):
-        """ Set default object ACL if not already set. """
-        if self._is_created() and not self._acl:
-            self._acl = self.default_item_acl()
 
     def save(self, request=None, *arg, **kw):
         """
@@ -704,7 +685,6 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         This makes each POST to a collection act as a 'create' operation
         (as opposed to an 'update' for example).
         """
-        self._set_default_acl()
         kw['force_insert'] = self._created
         self._request = request
         self._bump_version()
