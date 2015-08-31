@@ -637,6 +637,9 @@ class BaseMixin(object):
         modified = bool(self._get_changed_fields())
         return modified
 
+    def _is_created(self):
+        return self._created
+
 
 class BaseDocument(six.with_metaclass(DocumentMetaclass,
                                       BaseMixin, mongo.Document)):
@@ -687,7 +690,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
 
     def _set_default_acl(self):
         """ Set default object ACL if not already set. """
-        if self._created and not self._acl:
+        if self._is_created() and not self._acl:
             self._acl = self.__item_acl__
 
     def save(self, request=None, *arg, **kw):

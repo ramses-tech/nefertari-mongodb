@@ -205,6 +205,13 @@ class TestBaseMixin(object):
         obj.id = 1
         assert obj._is_modified()
 
+    def test_is_created(self):
+        obj = docs.BaseMixin()
+        obj._created = True
+        assert obj._is_created()
+        obj._created = False
+        assert not obj._is_created()
+
 
 class TestBaseDocument(object):
 
