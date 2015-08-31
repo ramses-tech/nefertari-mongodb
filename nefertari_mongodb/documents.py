@@ -469,10 +469,13 @@ class BaseMixin(object):
         return null_values
 
     def to_dict(self, **kwargs):
+        __depth = kwargs.get('__depth')
+        depth_reached = __depth is not None and __depth <= 0
+
         def _process(key, val):
             is_doc = isinstance(val, mongo.Document)
             include = key in self._nested_relationships
-            if is_doc and not include:
+            if is_doc and (not include or depth_reached):
                 val = getattr(val, val.pk_field(), None)
             return val
 
@@ -492,16 +495,35 @@ class BaseMixin(object):
         _dict['_pk'] = str(getattr(self, self.pk_field()))
         return _dict
 
-    def get_reference_documents(self):
-        models = []
-        for name, field in self._fields.items():
-            if isinstance(field, ReferenceField):
-                pair = (field.document_type, field.reverse_rel_field)
-                models.append(pair)
+    def get_related_documents(self, nested_only=False):
+        """ Return pairs of (Model, istances) of relationship fields.
 
-        for model_cls, key in models:
-            documents = to_dicts(model_cls.objects(**{key: self}))
-            yield model_cls, documents
+        Pair contains of two elements:
+          :Model: Model class object(s) contained in field.
+          :instances: Model class instance(s) contained in field
+
+        :param nested_only: Boolean, defaults to False. When True, return
+            results only contain data for models on which current model
+            and field are nested.
+        """
+        relationship_fields = {
+            name: field for name, field in self._fields.items()
+            if isinstance(field, (ReferenceField, RelationshipField))}
+
+        for name, field in relationship_fields.items():
+            value = getattr(self, name)
+            if not value:
+                continue
+            if not isinstance(value, list):
+                value = [value]
+            model_cls = value[0].__class__
+
+            if nested_only:
+                backref = getattr(field, 'reverse_rel_field', None)
+                if backref and backref not in model_cls._nested_relationships:
+                    continue
+
+            yield (model_cls, value)
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
