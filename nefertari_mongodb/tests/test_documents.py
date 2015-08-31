@@ -336,11 +336,13 @@ class TestBaseDocument(object):
                 document='MyModel1', backref_name='model2')
 
         assert MyModel1.get_null_values() == {
+            '_version': None,
             'name': None,
             'model2': None,
         }
 
         assert MyModel2.get_null_values() == {
+            '_version': None,
             'models1': [],
             'name': None,
         }
