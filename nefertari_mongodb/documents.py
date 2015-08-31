@@ -704,10 +704,10 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         This makes each POST to a collection act as a 'create' operation
         (as opposed to an 'update' for example).
         """
+        self._set_default_acl()
         kw['force_insert'] = self._created
         self._request = request
         self._bump_version()
-        self._set_default_acl()
         try:
             super(BaseDocument, self).save(*arg, **kw)
         except (mongo.NotUniqueError, mongo.OperationError) as e:
