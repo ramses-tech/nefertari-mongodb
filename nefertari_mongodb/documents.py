@@ -73,14 +73,6 @@ TYPES_MAP = {
     mongo.fields.ObjectIdField: {'type': 'string'},
     ForeignKeyField: {'type': 'string'},
     IdField: {'type': 'string'},
-    ACLField: {
-        'type': 'nested',
-        'properties': {
-            'action': {'type': 'string'},
-            'identifier': {'type': 'string', 'index': 'not_analyzed'},
-            'permission': {'type': 'string'},
-        }
-    },
 
     BooleanField: {'type': 'boolean'},
     BinaryField: {'type': 'object'},
@@ -123,9 +115,12 @@ class BaseMixin(object):
     Q = mongo.Q
 
     @classmethod
-    def get_es_mapping(cls):
+    def get_es_mapping(cls, types_map=None):
         """ Generate ES mapping from model schema. """
         from nefertari.elasticsearch import ES
+        if types_map is None:
+            types_map = TYPES_MAP
+
         properties = {}
         mapping = {
             ES.src2type(cls.__name__): {
@@ -141,7 +136,7 @@ class BaseMixin(object):
                 if name in cls._nested_relationships:
                     field_mapping = {'type': 'object'}
                 else:
-                    field_mapping = TYPES_MAP[
+                    field_mapping = types_map[
                         field.document_type.pk_field_type()]
                 properties[name] = field_mapping
                 continue
@@ -151,9 +146,9 @@ class BaseMixin(object):
             field_type = type(field)
             if field_type is ListField:
                 field_type = field.item_type
-            if field_type not in TYPES_MAP:
+            if field_type not in types_map:
                 continue
-            properties[name] = TYPES_MAP[field_type]
+            properties[name] = types_map[field_type]
 
         properties['_pk'] = {'type': 'string'}
         return mapping
