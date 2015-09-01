@@ -17,7 +17,7 @@ from .fields import (
     TextField, UnicodeField, UnicodeTextField,
     IdField, BooleanField, BinaryField, DecimalField, FloatField,
     BigIntegerField, SmallIntegerField, IntervalField, DateField,
-    TimeField, BaseFieldMixin, ACLField,
+    TimeField, BaseFieldMixin
 )
 from .utils import FieldData
 
