@@ -1,6 +1,10 @@
 Changelog
 =========
 
+* :release:`0.3.3 <2015-09-02>`
+* :bug:`-` Fixed a bug when using reserved query params with GET tunneling
+* :bug:`-` Fixed a bug preventing updates of floatFields via GET tunneling
+
 * :release:`0.3.2 <2015-08-19>`
 * :bug:`-` Fixed outdated data in nested relationships of PATCH responses
 
