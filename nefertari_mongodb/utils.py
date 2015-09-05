@@ -24,16 +24,3 @@ def get_relationship_cls(field, model_cls):
     if isinstance(field_obj, RelationshipField):
         field_obj = getattr(field_obj, 'field')
     return getattr(field_obj, 'document_type')
-
-
-class FieldData(object):
-    """ Keeps field data in a generic format.
-
-    Is passed to field processors.
-    """
-    def __init__(self, name, params=None):
-        self.name = name
-        self.params = params
-
-    def __repr__(self):
-        return '<FieldData: {}>'.format(self.name)
