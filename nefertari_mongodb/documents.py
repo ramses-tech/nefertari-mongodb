@@ -7,8 +7,7 @@ import mongoengine as mongo
 from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
-    process_fields, process_limit, _split, dictset, DataProxy,
-    drop_reserved_params)
+    process_fields, process_limit, _split, dictset, drop_reserved_params)
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .signals import on_bulk_update
 from .fields import (
@@ -453,31 +452,34 @@ class BaseMixin(object):
         return null_values
 
     def to_dict(self, **kwargs):
-        __depth = kwargs.get('__depth')
+        __depth = kwargs.get('__depth', 1)
         depth_reached = __depth is not None and __depth <= 0
 
-        def _process(key, val):
-            is_doc = isinstance(val, mongo.Document)
-            include = key in self._nested_relationships
-            if is_doc and (not include or depth_reached):
-                val = getattr(val, val.pk_field(), None)
-            return val
-
-        _data = {}
-        for attr, field_type in self._fields.items():
+        _data = dictset()
+        for field, field_type in self._fields.items():
             # Ignore ForeignKeyField fields
             if isinstance(field_type, ForeignKeyField):
                 continue
-            value = getattr(self, attr, None)
-            if isinstance(value, list):
-                value = [_process(attr, v) for v in value]
-            else:
-                value = _process(attr, value)
-            _data[attr] = value
-        _dict = DataProxy(_data).to_dict(**kwargs)
-        _dict['_type'] = self._type
-        _dict['_pk'] = str(getattr(self, self.pk_field()))
-        return _dict
+            value = getattr(self, field, None)
+
+            if value is not None:
+                include = field in self._nested_relationships
+                if not include or depth_reached:
+                    encoder = lambda v: getattr(v, v.pk_field(), None)
+                else:
+                    encoder = lambda v: v.to_dict(__depth=__depth-1)
+
+                if isinstance(field_type, ReferenceField):
+                    value = encoder(value)
+                elif isinstance(field_type, RelationshipField):
+                    value = [encoder(val) for val in value]
+                elif hasattr(value, 'to_dict'):
+                    value = value.to_dict(__depth=__depth-1)
+
+            _data[field] = value
+        _data['_type'] = self._type
+        _data['_pk'] = str(getattr(self, self.pk_field()))
+        return _data
 
     def get_related_documents(self, nested_only=False):
         """ Return pairs of (Model, istances) of relationship fields.
