@@ -456,10 +456,10 @@ class BaseMixin(object):
         return null_values
 
     def to_dict(self, **kwargs):
-        __depth = kwargs.get('__depth')
-        if __depth is None:
-            __depth = self._nesting_depth
-        depth_reached = __depth is not None and __depth <= 0
+        _depth = kwargs.get('_depth')
+        if _depth is None:
+            _depth = self._nesting_depth
+        depth_reached = _depth is not None and _depth <= 0
 
         _data = dictset()
         for field, field_type in self._fields.items():
@@ -473,14 +473,14 @@ class BaseMixin(object):
                 if not include or depth_reached:
                     encoder = lambda v: getattr(v, v.pk_field(), None)
                 else:
-                    encoder = lambda v: v.to_dict(__depth=__depth-1)
+                    encoder = lambda v: v.to_dict(_depth=_depth-1)
 
                 if isinstance(field_type, ReferenceField):
                     value = encoder(value)
                 elif isinstance(field_type, RelationshipField):
                     value = [encoder(val) for val in value]
                 elif hasattr(value, 'to_dict'):
-                    value = value.to_dict(__depth=__depth-1)
+                    value = value.to_dict(_depth=_depth-1)
 
             _data[field] = value
         _data['_type'] = self._type
