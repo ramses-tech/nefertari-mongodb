@@ -80,57 +80,26 @@ class BaseFieldMixin(object):
         return {k: v for k, v in kwargs.items() if k in valid_kwargs}
 
 
-class ProcessableMixin(object):
-    """ Mixin that allows running callables on a value that
-    is being set on a field.
-    """
-    def __init__(self, *args, **kwargs):
-        """ Pop before/after_validation processors
-
-        :before_validation: Processors that are run before
-            BaseDocument.validate()
-        :after_validation: Processors that are run after
-            BaseDocument.validate()
-        """
-        self.before_validation = kwargs.pop('before_validation', ())
-        self.after_validation = kwargs.pop('after_validation', ())
-        super(ProcessableMixin, self).__init__(*args, **kwargs)
-        self._init_kwargs.update(
-            before_validation=self.before_validation,
-            after_validation=self.after_validation)
-
-    def apply_processors(self, before=False, after=False, **proc_kwargs):
-        processors = []
-        if before:
-            processors += list(self.before_validation)
-        if after:
-            processors += list(self.after_validation)
-        for proc in processors:
-            processed_value = proc(**proc_kwargs)
-            proc_kwargs['new_value'] = processed_value
-        return proc_kwargs['new_value']
-
-
-class IntegerField(ProcessableMixin, BaseFieldMixin, fields.IntField):
+class IntegerField(BaseFieldMixin, fields.IntField):
     _valid_kwargs = ('min_value', 'max_value')
 
 
-class BigIntegerField(ProcessableMixin, BaseFieldMixin, fields.LongField):
+class BigIntegerField(BaseFieldMixin, fields.LongField):
     _valid_kwargs = ('min_value', 'max_value')
 
 
-class SmallIntegerField(ProcessableMixin, BaseFieldMixin, fields.IntField):
+class SmallIntegerField(BaseFieldMixin, fields.IntField):
     """ As mongoengine does not provide SmallInt, this is just a
     copy of `IntegerField`.
     """
     _valid_kwargs = ('min_value', 'max_value')
 
 
-class BooleanField(ProcessableMixin, BaseFieldMixin, fields.BooleanField):
+class BooleanField(BaseFieldMixin, fields.BooleanField):
     _valid_kwargs = ()
 
 
-class DateField(ProcessableMixin, BaseFieldMixin, fields.DateTimeField):
+class DateField(BaseFieldMixin, fields.DateTimeField):
     """ Custom field that stores `datetime.date` instances.
 
     This is basically mongoengine's `DateTimeField` which gets
@@ -160,11 +129,11 @@ class DateField(ProcessableMixin, BaseFieldMixin, fields.DateTimeField):
         return value.strftime('%Y-%m-%d')
 
 
-class DateTimeField(ProcessableMixin, BaseFieldMixin, fields.DateTimeField):
+class DateTimeField(BaseFieldMixin, fields.DateTimeField):
     _valid_kwargs = ()
 
 
-class FloatField(ProcessableMixin, BaseFieldMixin, fields.FloatField):
+class FloatField(BaseFieldMixin, fields.FloatField):
     _valid_kwargs = ('min_value', 'max_value')
 
     def validate(self, value):
@@ -177,7 +146,7 @@ class FloatField(ProcessableMixin, BaseFieldMixin, fields.FloatField):
         return super(FloatField, self).validate(value)
 
 
-class StringField(ProcessableMixin, BaseFieldMixin, fields.StringField):
+class StringField(BaseFieldMixin, fields.StringField):
     _valid_kwargs = ('regex', 'min_length', 'max_length')
 
 
@@ -185,7 +154,7 @@ class TextField(StringField):
     pass
 
 
-class UnicodeField(ProcessableMixin, BaseFieldMixin, fields.StringField):
+class UnicodeField(BaseFieldMixin, fields.StringField):
     _valid_kwargs = ('regex', 'min_length', 'max_length')
 
 
@@ -193,7 +162,7 @@ class UnicodeTextField(UnicodeField):
     pass
 
 
-class ChoiceField(ProcessableMixin, fields.BaseField):
+class ChoiceField(fields.BaseField):
     """
     As mongoengine does not have an explicit ChoiceField, but all mongoengine
     fields accept `choices` kwarg, we need to define a proxy here.
@@ -226,7 +195,7 @@ class ChoiceField(ProcessableMixin, fields.BaseField):
         return super(ChoiceField, self).__getattribute__(attr)
 
 
-class BinaryField(ProcessableMixin, BaseFieldMixin, fields.BinaryField):
+class BinaryField(BaseFieldMixin, fields.BinaryField):
     _valid_kwargs = ('max_bytes',)
 
     def translate_kwargs(self, kwargs):
@@ -240,7 +209,7 @@ class BinaryField(ProcessableMixin, BaseFieldMixin, fields.BinaryField):
         return kwargs
 
 
-class DecimalField(ProcessableMixin, BaseFieldMixin, fields.DecimalField):
+class DecimalField(BaseFieldMixin, fields.DecimalField):
     """ This is basically a DecimalField with a fixed name of
     `precision` kwarg.
     """
@@ -258,7 +227,7 @@ class DecimalField(ProcessableMixin, BaseFieldMixin, fields.DecimalField):
         return kwargs
 
 
-class TimeField(ProcessableMixin, BaseFieldMixin, fields.BaseField):
+class TimeField(BaseFieldMixin, fields.BaseField):
     """ Custom field that stores `datetime.date` instances. """
     _valid_kwargs = ()
 
@@ -347,7 +316,7 @@ class IntervalField(IntegerField):
         return self.to_mongo(value)
 
 
-class ListField(ProcessableMixin, BaseFieldMixin, fields.ListField):
+class ListField(BaseFieldMixin, fields.ListField):
     """ Custom ListField.
 
     The custom part is the validation. Choices are stored in a separate
@@ -380,11 +349,11 @@ class ListField(ProcessableMixin, BaseFieldMixin, fields.ListField):
         return value
 
 
-class DictField(ProcessableMixin, BaseFieldMixin, fields.DictField):
+class DictField(BaseFieldMixin, fields.DictField):
     _valid_kwargs = ('basecls', 'field')
 
 
-class IdField(ProcessableMixin, BaseFieldMixin, fields.ObjectIdField):
+class IdField(BaseFieldMixin, fields.ObjectIdField):
     """ Just a subclass of ObjectIdField that must be used for fields
     that represent database-specific 'id' field.
     """
@@ -404,7 +373,7 @@ class ForeignKeyField(BaseFieldMixin, fields.StringField):
     _valid_kwargs = ()
 
 
-class ReferenceField(ProcessableMixin, BaseFieldMixin, fields.ReferenceField):
+class ReferenceField(BaseFieldMixin, fields.ReferenceField):
     """ Field that references another document.
 
     **It ISN'T MEANT to be used explicitly by the user. To create a
@@ -589,7 +558,7 @@ class ReferenceField(ProcessableMixin, BaseFieldMixin, fields.ReferenceField):
         return kwargs
 
 
-class RelationshipField(ProcessableMixin, BaseFieldMixin, fields.ListField):
+class RelationshipField(BaseFieldMixin, fields.ListField):
     """ Relationship field meant to be used to create one-to-many relationships.
 
     **It ISN'T MEANT to be used by users explicitly. To create a

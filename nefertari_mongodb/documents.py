@@ -8,7 +8,7 @@ from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset, DataProxy,
-    to_dicts, drop_reserved_params)
+    drop_reserved_params)
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .signals import on_bulk_update
 from .fields import (
@@ -19,7 +19,6 @@ from .fields import (
     BigIntegerField, SmallIntegerField, IntervalField, DateField,
     TimeField, BaseFieldMixin
 )
-from .utils import FieldData
 
 
 log = logging.getLogger(__name__)
@@ -242,7 +241,6 @@ class BaseMixin(object):
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
         params[key] = ids
-        params['_limit'] = len(ids)
 
         if first:
             return cls.get_resource(**params)
@@ -303,16 +301,14 @@ class BaseMixin(object):
             if _count:
                 return _total
 
-            if _limit is None:
-                raise JHTTPBadRequest('Missing _limit')
-
-            _start, _limit = process_limit(_start, _page, _limit)
-
             # Filtering by fields has to be the first thing to do on the
             # query_set!
             query_set = cls.apply_fields(query_set, _fields)
             query_set = cls.apply_sort(query_set, _sort)
-            query_set = query_set[_start:_start+_limit]
+
+            if _limit is not None:
+                _start, _limit = process_limit(_start, _page, _limit)
+                query_set = query_set[_start:_start+_limit]
 
             if not query_set.count():
                 msg = "'%s(%s)' resource not found" % (cls.__name__, params)
@@ -442,7 +438,6 @@ class BaseMixin(object):
         pk_field = '{}__in'.format(cls.pk_field())
         params.update({
             pk_field: ids,
-            '_limit': len(ids),
         })
         return cls.get_collection(**params)
 
@@ -727,9 +722,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
 
     def validate(self, *arg, **kw):
         try:
-            self.apply_before_validation()
             super(BaseDocument, self).validate(*arg, **kw)
-            self.apply_after_validation()
         except mongo.ValidationError as e:
             raise JHTTPBadRequest(
                 'Resource `%s`: %s' % (self.__class__.__name__, e),
@@ -739,64 +732,11 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         self._request = request
         super(BaseDocument, self).delete(**kw)
 
-    def apply_processors(self, field_names=None, before=False, after=False):
-        """ Apply processors to fields with :field_names: names.
-
-        Arguments:
-          :field_names: List of string names of changed fields.
-          :before: Boolean indicating whether to apply before_validation
-            processors.
-          :after: Boolean indicating whether to apply after_validation
-            processors.
-        """
-        if field_names is None:
-            field_names = self._fields.keys()
-
-        for name in field_names:
-            field = self._fields[name]
-            if hasattr(field, 'apply_processors'):
-                new_value = getattr(self, name)
-                field_data = FieldData(
-                    name=name,
-                    params=getattr(field, '_init_kwargs', None),
-                )
-                proc_kwargs = {
-                    'new_value': new_value,
-                    'instance': self,
-                    'field': field_data,
-                    'request': getattr(self, '_request', None),
-                }
-                processed_value = field.apply_processors(
-                    before=before, after=after, **proc_kwargs)
-                setattr(self, name, processed_value)
-
-    def apply_before_validation(self):
-        """ Determine changed fields and run `self.apply_processors` to
-        apply needed processors.
-
-        Note that at this stage, field values are in the exact same state
-        you posted/set them. E.g. if you set time_field='11/22/2000',
-        self.time_field will be equal to '11/22/2000' here.
-        """
-        if self._created:  # New object
-            changed_fields = list(self._fields.keys())
-        else:
-            # Apply processors to updated fields only
-            changed_fields = self._get_changed_fields()
-
-        changed_fields = sorted(changed_fields)
-        self._fields_to_process = changed_fields
-        self.apply_processors(changed_fields, before=True)
-
-    def apply_after_validation(self):
-        """ Run `self.apply_processors` with field names determined by
-        `self.apply_before_validation`.
-
-        Note that at this stage, field values are in the exact same state
-        you posted/set them. E.g. if you set time_field='11/22/2000',
-        self.time_field will be equal to '11/22/2000' here.
-        """
-        self.apply_processors(self._fields_to_process, after=True)
+    @classmethod
+    def get_field_params(cls, field_name):
+        """ Get init params of field named :field_name:. """
+        field = cls._fields[field_name]
+        return getattr(field, '_init_kwargs', None)
 
     def clean(self):
         """ Clean fields which are instances of BaseFieldMixin """
