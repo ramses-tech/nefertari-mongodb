@@ -139,7 +139,7 @@ class BaseMixin(object):
                     field_mapping = {'type': 'object'}
                     submapping = field.document_type.get_es_mapping(
                         _depth=_depth-1)
-                    field_mapping.update(submapping.values()[0])
+                    field_mapping.update(list(submapping.values())[0])
                 else:
                     field_mapping = TYPES_MAP[
                         field.document_type.pk_field_type()]
