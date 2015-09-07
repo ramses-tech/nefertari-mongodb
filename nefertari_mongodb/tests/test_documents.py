@@ -1,5 +1,5 @@
 import pytest
-from mock import patch, Mock, call
+from mock import patch, Mock
 
 import mongoengine as mongo
 from mongoengine.errors import FieldDoesNotExist
@@ -67,6 +67,8 @@ class TestBaseMixin(object):
     @patch('nefertari.elasticsearch.engine')
     def test_get_es_mapping(self, mock_conv):
         class MyModel(docs.BaseDocument):
+            _nested_relationships = ['parent']
+            _nesting_depth = 0
             my_id = fields.IdField()
             name = fields.StringField(primary_key=True)
             status = fields.ChoiceField(choices=['active'])
@@ -74,13 +76,14 @@ class TestBaseMixin(object):
 
         class MyModel2(docs.BaseDocument):
             _nested_relationships = ['child']
-            __tablename__ = 'mymodel2'
+            _nesting_depth = 1
             name = fields.StringField(primary_key=True)
             child = fields.Relationship(
                 document='MyModel', backref_name='parent',
                 uselist=False, backref_uselist=False)
 
-        assert MyModel.get_es_mapping() == {
+        mymodel_mapping = MyModel.get_es_mapping()
+        assert mymodel_mapping == {
             'MyModel': {
                 'properties': {
                     '_pk': {'type': 'string'},
@@ -94,13 +97,18 @@ class TestBaseMixin(object):
             }
         }
 
-        assert MyModel2.get_es_mapping() == {
+        mymodel2_mapping = MyModel2.get_es_mapping()
+        child_props = mymodel_mapping['MyModel']['properties']
+        assert mymodel2_mapping == {
             'MyModel2': {
                 'properties': {
                     '_pk': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'name': {'type': 'string'},
-                    'child': {'type': 'object'},
+                    'child': {
+                        'type': 'object',
+                        'properties': child_props
+                    },
                 }
             }
         }

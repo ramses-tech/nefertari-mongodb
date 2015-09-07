@@ -117,9 +117,13 @@ class BaseMixin(object):
     Q = mongo.Q
 
     @classmethod
-    def get_es_mapping(cls):
+    def get_es_mapping(cls, _depth=None):
         """ Generate ES mapping from model schema. """
         from nefertari.elasticsearch import ES
+        if _depth is None:
+            _depth = cls._nesting_depth
+        depth_reached = _depth <= 0
+
         properties = {}
         mapping = {
             ES.src2type(cls.__name__): {
@@ -127,13 +131,15 @@ class BaseMixin(object):
             }
         }
         fields = cls._fields.copy()
-
         for name, field in fields.items():
             if isinstance(field, RelationshipField):
                 field = field.field
             if isinstance(field, (ReferenceField, RelationshipField)):
-                if name in cls._nested_relationships:
+                if name in cls._nested_relationships and not depth_reached:
                     field_mapping = {'type': 'object'}
+                    submapping = field.document_type.get_es_mapping(
+                        _depth=_depth-1)
+                    field_mapping.update(submapping.values()[0])
                 else:
                     field_mapping = TYPES_MAP[
                         field.document_type.pk_field_type()]
