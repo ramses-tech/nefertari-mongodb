@@ -188,6 +188,13 @@ class TestBaseMixin(object):
         obj.id = 1
         assert obj._is_modified()
 
+    def test_is_created(self):
+        obj = docs.BaseMixin()
+        obj._created = True
+        assert obj._is_created()
+        obj._created = False
+        assert not obj._is_created()
+
 
 class TestBaseDocument(object):
 
@@ -217,13 +224,11 @@ class TestBaseDocument(object):
                 document='MyModel1', backref_name='model2')
 
         assert MyModel1.get_null_values() == {
-            '_version': None,
             'name': None,
             'model2': None,
         }
 
         assert MyModel2.get_null_values() == {
-            '_version': None,
             'models1': [],
             'name': None,
         }
