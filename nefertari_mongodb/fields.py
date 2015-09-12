@@ -392,7 +392,6 @@ class ReferenceField(BaseFieldMixin, fields.ReferenceField):
     """
     _valid_kwargs = (
         'document_type', 'dbref', 'reverse_delete_rule',
-        'before_validation', 'after_validation',
     )
     _kwargs_prefix = 'ref_'
     _backref_prefix = 'backref_'
@@ -577,8 +576,8 @@ class RelationshipField(BaseFieldMixin, fields.ListField):
         'db_field', 'required', 'default', 'unique',
         'unique_with', 'primary_key', 'validation', 'choices',
         'verbose_name', 'help_text', 'sparse',
-        'before_validation', 'after_validation',
     )
+
     _backref_prefix = 'backref_'
     reverse_rel_field = None
 
@@ -690,14 +689,5 @@ def Relationship(**kwargs):
     switching between the sqla and mongo engines.
     """
     uselist = kwargs.pop('uselist', True)
-    # many-to-one
-    if uselist:
-        return RelationshipField(**kwargs)
-    # one-to-one
-    else:
-        fields = ReferenceField._valid_kwargs + (
-            'document', 'ondelete')
-        fields += tuple(ReferenceField._backref_prefix + f for f in fields)
-        fields += (ReferenceField._backref_prefix + 'name',)
-        ref_kwargs = {f: kwargs.get(f) for f in fields if f in kwargs}
-        return ReferenceField(**ref_kwargs)
+    field_cls = RelationshipField if uselist else ReferenceField
+    return field_cls(**kwargs)
