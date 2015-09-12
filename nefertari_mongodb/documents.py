@@ -7,8 +7,7 @@ import mongoengine as mongo
 from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
-    process_fields, process_limit, _split, dictset, DataProxy,
-    drop_reserved_params)
+    process_fields, process_limit, _split, dictset, drop_reserved_params)
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .signals import on_bulk_update
 from .fields import (
@@ -64,7 +63,7 @@ def process_bools(_dict):
     return _dict
 
 
-TYPES_MAP = {
+types_map = {
     StringField: {'type': 'string'},
     TextField: {'type': 'string'},
     UnicodeField: {'type': 'string'},
@@ -104,21 +103,26 @@ class BaseMixin(object):
             included documents. If reference/relationship field is not
             present in this list, this field's value in JSON will be an
             object's ID or list of IDs.
+        _nesting_depth: Depth of relationship field nesting in JSON.
+            Defaults to 1(one) which makes only one level of relationship
+            nested.
     """
     _public_fields = None
     _auth_fields = None
     _nested_relationships = ()
     _backref_hooks = ()
+    _nesting_depth = 1
 
     _type = property(lambda self: self.__class__.__name__)
     Q = mongo.Q
 
     @classmethod
-    def get_es_mapping(cls, types_map=None):
+    def get_es_mapping(cls, _depth=None):
         """ Generate ES mapping from model schema. """
         from nefertari.elasticsearch import ES
-        if types_map is None:
-            types_map = TYPES_MAP
+        if _depth is None:
+            _depth = cls._nesting_depth
+        depth_reached = _depth <= 0
 
         properties = {}
         mapping = {
@@ -127,13 +131,15 @@ class BaseMixin(object):
             }
         }
         fields = cls._fields.copy()
-
         for name, field in fields.items():
             if isinstance(field, RelationshipField):
                 field = field.field
             if isinstance(field, (ReferenceField, RelationshipField)):
-                if name in cls._nested_relationships:
+                if name in cls._nested_relationships and not depth_reached:
                     field_mapping = {'type': 'object'}
+                    submapping = field.document_type.get_es_mapping(
+                        _depth=_depth-1)
+                    field_mapping.update(list(submapping.values())[0])
                 else:
                     field_mapping = types_map[
                         field.document_type.pk_field_type()]
@@ -459,31 +465,36 @@ class BaseMixin(object):
         return null_values
 
     def to_dict(self, **kwargs):
-        __depth = kwargs.get('__depth')
-        depth_reached = __depth is not None and __depth <= 0
+        _depth = kwargs.get('_depth')
+        if _depth is None:
+            _depth = self._nesting_depth
+        depth_reached = _depth is not None and _depth <= 0
 
-        def _process(key, val):
-            is_doc = isinstance(val, mongo.Document)
-            include = key in self._nested_relationships
-            if is_doc and (not include or depth_reached):
-                val = getattr(val, val.pk_field(), None)
-            return val
-
-        _data = {}
-        for attr, field_type in self._fields.items():
+        _data = dictset()
+        for field, field_type in self._fields.items():
             # Ignore ForeignKeyField fields
             if isinstance(field_type, ForeignKeyField):
                 continue
-            value = getattr(self, attr, None)
-            if isinstance(value, list):
-                value = [_process(attr, v) for v in value]
-            else:
-                value = _process(attr, value)
-            _data[attr] = value
-        _dict = DataProxy(_data).to_dict(**kwargs)
-        _dict['_type'] = self._type
-        _dict['_pk'] = str(getattr(self, self.pk_field()))
-        return _dict
+            value = getattr(self, field, None)
+
+            if value is not None:
+                include = field in self._nested_relationships
+                if not include or depth_reached:
+                    encoder = lambda v: getattr(v, v.pk_field(), None)
+                else:
+                    encoder = lambda v: v.to_dict(_depth=_depth-1)
+
+                if isinstance(field_type, ReferenceField):
+                    value = encoder(value)
+                elif isinstance(field_type, RelationshipField):
+                    value = [encoder(val) for val in value]
+                elif hasattr(value, 'to_dict'):
+                    value = value.to_dict(_depth=_depth-1)
+
+            _data[field] = value
+        _data['_type'] = self._type
+        _data['_pk'] = str(getattr(self, self.pk_field()))
+        return _data
 
     def get_related_documents(self, nested_only=False):
         """ Return pairs of (Model, istances) of relationship fields.
