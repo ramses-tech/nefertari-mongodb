@@ -41,8 +41,7 @@ def on_bulk_update(model_cls, objects, request):
     es.index(documents, request=request)
 
     # Reindex relationships
-    for obj in objects:
-        es.index_relations(obj, request=request, nested_only=True)
+    es.bulk_index_relations(objects, request=request, nested_only=True)
 
 
 def setup_es_signals_for(source_cls):
