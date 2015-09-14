@@ -106,7 +106,7 @@ class TestBaseMixin(object):
                     '_version': {'type': 'long'},
                     'name': {'type': 'string'},
                     'child': {
-                        'type': 'object',
+                        'type': 'nested',
                         'properties': child_props
                     },
                 }
