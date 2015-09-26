@@ -99,7 +99,7 @@ class BaseMixin(object):
         _public_fields: String names of fields meant to be displayed to
             non-authenticated users.
         _hidden_fields: String names of fields which are hidden from all
-            users except admins but are available for edit.
+            users (except admin users) but are available for edit.
         _nested_relationships: String names of reference/relationship fields
             that should be included in JSON data of an object as full
             included documents. If reference/relationship field is not
