@@ -253,7 +253,7 @@ class BaseMixin(object):
         params[key] = ids
 
         if first:
-            return cls.get_resource(**params)
+            return cls.get_item(**params)
         else:
             return cls.get_collection(**params)
 
@@ -360,17 +360,12 @@ class BaseMixin(object):
         return query_fields + list(cls._fields.keys())
 
     @classmethod
-    def get_resource(cls, **params):
+    def get_item(cls, **params):
         params.setdefault('__raise_on_empty', True)
         params['_limit'] = 1
         params['_item_request'] = True
         query_set = cls.get_collection(**params)
         return query_set.first()
-
-    @classmethod
-    def get(cls, **kw):
-        return cls.get_resource(
-            __raise_on_empty=kw.pop('__raise', False), **kw)
 
     def unique_fields(self):
         pk_field = [self.pk_field()]
