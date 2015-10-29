@@ -640,6 +640,19 @@ class BaseMixin(object):
     def _is_created(self):
         return self._created
 
+    def _to_python_fields(self):
+        """ Call to_python on non-relation fields. """
+        from .utils import relationship_fields
+        for name, field in self._fields.items():
+            rel_field = isinstance(field, relationship_fields)
+            if name not in self._data or rel_field:
+                continue
+            value = self._data[name]
+            try:
+                self._data[name] = field.to_python(value)
+            except:
+                continue
+
 
 class BaseDocument(six.with_metaclass(DocumentMetaclass,
                                       BaseMixin, mongo.Document)):
@@ -717,9 +730,9 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         kw['request'] = request
         # request are passed to _update and then to save
         try:
-            updated_obj = self._update(params, **kw)
-            updated_obj.reload()
-            return updated_obj
+            self._update(params, **kw)
+            self._to_python_fields()
+            return self
         except (mongo.NotUniqueError, mongo.OperationError) as e:
             if (e.__class__ is mongo.OperationError
                     and 'E11000' not in e.message):
