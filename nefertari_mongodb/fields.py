@@ -638,6 +638,7 @@ class RelationshipField(BaseFieldMixin, fields.ListField):
         - `value`.
         """
         super_set = super(RelationshipField, self).__set__
+
         if not self.reverse_rel_field:
             return super_set(instance, value)
 
@@ -648,15 +649,15 @@ class RelationshipField(BaseFieldMixin, fields.ListField):
         if value == current_value:
             return
 
-        added_values = set(value) - set(current_value)
-        deleted_values = set(current_value) - set(value)
         is_doc = lambda x: isinstance(x, mongo.Document)
 
-        if added_values and all(is_doc(v) for v in added_values):
+        added_values = set(value) - set(current_value)
+        if added_values and is_doc(list(added_values)[0]):
             for val in added_values:
                 self._register_addition_hook(val, instance)
 
-        if deleted_values and all(is_doc(v) for v in deleted_values):
+        deleted_values = set(current_value) - set(value)
+        if deleted_values and is_doc(list(deleted_values)[0]):
             for val in deleted_values:
                 self._register_deletion_hook(val, instance)
 
