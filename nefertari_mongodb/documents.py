@@ -98,6 +98,7 @@ class BaseMixin(object):
             authenticated users.
         _public_fields: String names of fields meant to be displayed to
             non-authenticated users.
+        _hidden_fields: String names of fields meant to be hidden but editable.
         _nested_relationships: String names of reference/relationship fields
             that should be included in JSON data of an object as full
             included documents. If reference/relationship field is not
@@ -109,6 +110,7 @@ class BaseMixin(object):
     """
     _public_fields = None
     _auth_fields = None
+    _hidden_fields = None
     _nested_relationships = ()
     _backref_hooks = ()
     _nesting_depth = 1
@@ -251,7 +253,7 @@ class BaseMixin(object):
         params[key] = ids
 
         if first:
-            return cls.get_resource(**params)
+            return cls.get_item(**params)
         else:
             return cls.get_collection(**params)
 
@@ -358,17 +360,12 @@ class BaseMixin(object):
         return query_fields + list(cls._fields.keys())
 
     @classmethod
-    def get_resource(cls, **params):
+    def get_item(cls, **params):
         params.setdefault('_raise_on_empty', True)
         params['_limit'] = 1
         params['_item_request'] = True
         query_set = cls.get_collection(**params)
         return query_set.first()
-
-    @classmethod
-    def get(cls, **kw):
-        return cls.get_resource(
-            _raise_on_empty=kw.pop('__raise', False), **kw)
 
     def unique_fields(self):
         pk_field = [self.pk_field()]
@@ -643,6 +640,19 @@ class BaseMixin(object):
     def _is_created(self):
         return self._created
 
+    def _to_python_fields(self):
+        """ Call to_python on non-relation fields. """
+        from .utils import relationship_fields
+        for name, field in self._fields.items():
+            rel_field = isinstance(field, relationship_fields)
+            if name not in self._data or rel_field:
+                continue
+            value = self._data[name]
+            try:
+                self._data[name] = field.to_python(value)
+            except:
+                continue
+
 
 class BaseDocument(six.with_metaclass(DocumentMetaclass,
                                       BaseMixin, mongo.Document)):
@@ -720,9 +730,9 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
         kw['request'] = request
         # request are passed to _update and then to save
         try:
-            updated_obj = self._update(params, **kw)
-            updated_obj.reload()
-            return updated_obj
+            self._update(params, **kw)
+            self._to_python_fields()
+            return self
         except (mongo.NotUniqueError, mongo.OperationError) as e:
             if (e.__class__ is mongo.OperationError
                     and 'E11000' not in e.message):

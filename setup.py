@@ -1,21 +1,19 @@
 from setuptools import setup, find_packages
 
-
 install_requires = [
-    'mongoengine==0.9',
-    'pymongo==2.8',
-    'zope.dottedname',
     'elasticsearch',
-    'python-dateutil',
+    'mongoengine==0.9',
+    'nefertari>=0.6.0',
+    'pymongo==2.8',
     'pyramid_tm',
+    'python-dateutil',
     'six',
-    'nefertari>=0.5.1'
+    'zope.dottedname',
 ]
-
 
 setup(
     name='nefertari_mongodb',
-    version="0.3.3",
+    version="0.4.0",
     description='mongodb engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
