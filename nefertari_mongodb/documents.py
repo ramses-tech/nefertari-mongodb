@@ -264,7 +264,7 @@ class BaseMixin(object):
         """
         log.debug('Get collection: {}, {}'.format(cls.__name__, params))
         params.pop('__confirmation', False)
-        __strict = params.pop('__strict', True)
+        _strict = params.pop('_strict', True)
         _item_request = params.pop('_item_request', False)
 
         _sort = _split(params.pop('_sort', []))
@@ -278,7 +278,7 @@ class BaseMixin(object):
         params.pop('_count', None)
         _explain = '_explain' in params
         params.pop('_explain', None)
-        __raise_on_empty = params.pop('__raise_on_empty', False)
+        _raise_on_empty = params.pop('_raise_on_empty', False)
 
         if query_set is None:
             query_set = cls.objects
@@ -290,7 +290,7 @@ class BaseMixin(object):
         })
 
         params = drop_reserved_params(params)
-        if __strict:
+        if _strict:
             _check_fields = [
                 f.strip('-+') for f in list(params.keys()) + _fields + _sort]
             cls.check_fields_allowed(_check_fields)
@@ -320,7 +320,7 @@ class BaseMixin(object):
 
             if not query_set.count():
                 msg = "'%s(%s)' resource not found" % (cls.__name__, params)
-                if __raise_on_empty:
+                if _raise_on_empty:
                     raise JHTTPNotFound(msg)
                 else:
                     log.debug(msg)
@@ -359,7 +359,7 @@ class BaseMixin(object):
 
     @classmethod
     def get_resource(cls, **params):
-        params.setdefault('__raise_on_empty', True)
+        params.setdefault('_raise_on_empty', True)
         params['_limit'] = 1
         params['_item_request'] = True
         query_set = cls.get_collection(**params)
@@ -368,7 +368,7 @@ class BaseMixin(object):
     @classmethod
     def get(cls, **kw):
         return cls.get_resource(
-            __raise_on_empty=kw.pop('__raise', False), **kw)
+            _raise_on_empty=kw.pop('__raise', False), **kw)
 
     def unique_fields(self):
         pk_field = [self.pk_field()]
