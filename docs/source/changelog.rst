@@ -1,6 +1,10 @@
 Changelog
 =========
 
+* :release:`0.4.1 <2015-11-xx>`
+* :bug:`-` Partially fixed a performance issue when using backref fields, needs additional work
+* :bug:`-` Fixed get_field_params() not handling missing fields
+
 * :release:`0.4.0 <2015-10-07>`
 * :feature:`-` Nested relationships are now indexed in bulk in ElasticSearch
 * :feature:`-` Added '_nesting_depth' property in models to control the level of nesting, default is 1
