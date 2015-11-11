@@ -758,7 +758,7 @@ class BaseDocument(six.with_metaclass(DocumentMetaclass,
     @classmethod
     def get_field_params(cls, field_name):
         """ Get init params of field named :field_name:. """
-        field = cls._fields[field_name]
+        field = cls._fields.get(field_name)
         return getattr(field, '_init_kwargs', None)
 
     def clean(self):
