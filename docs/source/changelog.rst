@@ -1,9 +1,10 @@
 Changelog
 =========
 
-* :release:`0.4.1 <2015-11-xx>`
+* :release:`0.4.1 <2015-11-18>`
 * :bug:`-` Partially fixed a performance issue when using backref fields, needs additional work
 * :bug:`-` Fixed get_field_params() not handling missing fields
+* cosmetic name changes in preparation of engine refactoring
 
 * :release:`0.4.0 <2015-10-07>`
 * :feature:`-` Nested relationships are now indexed in bulk in ElasticSearch
