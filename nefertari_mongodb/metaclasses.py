@@ -1,11 +1,12 @@
 from mongoengine import Document
 from mongoengine.queryset import DO_NOTHING
+from nefertari.engine.common import MultiEngineMeta
 
 from .signals import setup_es_signals_for
 from .fields import ReferenceField, RelationshipField
 
 
-class DocumentMetaclass(Document.my_metaclass):
+class DocumentMetaclass(MultiEngineMeta, Document.my_metaclass):
     """ Custom metaclass that supports backreferences generation.
 
     The feature of this metaclass is that it creates a backreference
