@@ -8,6 +8,8 @@ from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset, drop_reserved_params)
+from nefertari.engine.common import MultipleEnginesDocMixin
+
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .signals import on_bulk_update
 from .fields import (
@@ -654,8 +656,9 @@ class BaseMixin(object):
                 continue
 
 
-class BaseDocument(six.with_metaclass(DocumentMetaclass,
-                                      BaseMixin, mongo.Document)):
+class BaseDocument(six.with_metaclass(
+        DocumentMetaclass,
+        MultipleEnginesDocMixin, BaseMixin, mongo.Document)):
     _version = IntegerField(default=0)
 
     meta = {
