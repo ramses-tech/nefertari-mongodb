@@ -185,6 +185,10 @@ class BaseMixin(object):
         signals.post_save.connect(cls._generate_on_creation, sender=model)
 
     @classmethod
+    def _fields_map(cls):
+        return cls._fields.copy()
+
+    @classmethod
     def pk_field(cls):
         return cls._meta['id_field']
 
