@@ -216,6 +216,18 @@ class TestBaseMixin(object):
 
 class TestBaseDocument(object):
 
+    def test_is_abstract(self):
+        class MyModel(docs.BaseDocument):
+            meta = {'abstract': True}
+            name = fields.StringField()
+
+        assert MyModel._is_abstract()
+
+        class MyModel2(MyModel):
+            pass
+
+        assert not MyModel2._is_abstract()
+
     def test_init_created_with_invalid_fields(self):
         class MyModel(docs.BaseDocument):
             name = fields.StringField()

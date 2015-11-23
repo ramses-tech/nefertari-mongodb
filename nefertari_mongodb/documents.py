@@ -669,6 +669,11 @@ class BaseDocument(six.with_metaclass(
         'abstract': True,
     }
 
+    @classmethod
+    def _is_abstract(cls):
+        meta = getattr(cls, '_meta', {})
+        return meta.get('abstract', False)
+
     def __init__(self, *args, **values):
         """ Override init to filter out invalid fields from :values:.
 
