@@ -3,7 +3,7 @@ from mongoengine.queryset import DO_NOTHING
 from nefertari.engine.common import MultiEngineMeta
 
 from .signals import setup_es_signals_for
-from .fields import ReferenceField, RelationshipField
+from .fields import ReferenceField, RelationshipField, IdField
 
 
 class DocumentMetaclass(MultiEngineMeta, Document.my_metaclass):
@@ -28,11 +28,22 @@ class DocumentMetaclass(MultiEngineMeta, Document.my_metaclass):
     creation works. Check `mongoengine/base/metaclasses.py` for the original
     code of this metaclass.
     """
+    def __new__(cls, name, bases, attrs):
+        """ Override class generation to add 'id' field to meta['id_field']
+        so it's not overriden by ObjectIdField.
+        """
+        if 'id' in attrs and isinstance(attrs['id'], IdField):
+            for attr, val in attrs.items():
+                if getattr(val, 'primary_key', False):
+                    break
+            else:
+                attrs.setdefault('meta', {})
+                attrs['meta']['id_field'] = 'id'
+        return super(DocumentMetaclass, cls).__new__(
+            cls, name, bases, attrs)
 
     def __init__(self, name, bases, attrs):
-        """ Override new class initialization to create backreferences.
-
-        """
+        """ Override new class initialization to create backreferences. """
         super(DocumentMetaclass, self).__init__(name, bases, attrs)
         for field_name, field in self._fields.items():
 
