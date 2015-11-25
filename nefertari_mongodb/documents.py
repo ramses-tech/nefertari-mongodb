@@ -194,7 +194,7 @@ class BaseMixin(object):
             field creator: Class/func that may be run to create new
                 instance of such field. Note that these are classes that
                 create fields, not classes of created fields. E.g.
-                "Relationship" func instead of "RelationshipProperty".
+                "Relationship" func instead of "ReferenceField".
 
         Does not return backref relationship fields.
         """
