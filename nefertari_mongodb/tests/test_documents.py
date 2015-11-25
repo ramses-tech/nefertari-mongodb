@@ -113,15 +113,30 @@ class TestBaseMixin(object):
             }
         }
 
-    def test_fields_map(self):
-        class MyModel(docs.BaseDocument):
-            my_id = fields.IdField()
-            name = fields.StringField(primary_key=True)
+    def test_get_fields_creators(self):
+        class Department(docs.BaseDocument):
+            __tablename__ = 'department'
+            id = fields.IdField(primary_key=True)
+            company_id = fields.ForeignKeyField(
+                ref_document='Company', ref_column='company.id',
+                ref_column_type=fields.IdField)
 
-        fields_cls = MyModel._fields_map()
-        assert set(fields_cls.keys()) == {'my_id', 'name', '_version'}
-        assert isinstance(fields_cls['my_id'], fields.IdField)
-        assert isinstance(fields_cls['name'], fields.StringField)
+        class Company(docs.BaseDocument):
+            __tablename__ = 'company'
+            id = fields.IdField(primary_key=True)
+            departments = fields.Relationship(
+                document='Department', backref_name='company')
+
+        dep_fields = Department._get_fields_creators()
+        assert set(dep_fields.keys()) == {
+            'id', '_version', 'company_id'}
+        assert dep_fields['id'] is fields.IdField
+        assert dep_fields['company_id'] is fields.ForeignKeyField
+
+        parent_fields = Company._get_fields_creators()
+        assert set(parent_fields.keys()) == {'id', '_version', 'departments'}
+        assert parent_fields['id'] is fields.IdField
+        assert parent_fields['departments'] is fields.Relationship
 
     def test_pk_field(self):
         class MyModel(docs.BaseDocument):

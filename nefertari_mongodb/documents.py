@@ -12,13 +12,14 @@ from nefertari.engine.common import MultiEngineDocMixin
 
 from .metaclasses import ESMetaclass, DocumentMetaclass
 from .signals import on_bulk_update
+from .utils import relationship_fields
 from .fields import (
     DateTimeField, IntegerField, ForeignKeyField, RelationshipField,
     DictField, ListField, ChoiceField, ReferenceField, StringField,
     TextField, UnicodeField, UnicodeTextField,
     IdField, BooleanField, BinaryField, DecimalField, FloatField,
     BigIntegerField, SmallIntegerField, IntervalField, DateField,
-    TimeField, BaseFieldMixin
+    TimeField, BaseFieldMixin, Relationship
 )
 
 
@@ -185,8 +186,30 @@ class BaseMixin(object):
         signals.post_save.connect(cls._generate_on_creation, sender=model)
 
     @classmethod
-    def _fields_map(cls):
-        return cls._fields.copy()
+    def _get_fields_creators(cls):
+        """ Return map of field creator classes/functions.
+
+        Map consists of:
+            field name: String name of a field
+            field creator: Class/func that may be run to create new
+                instance of such field. Note that these are classes that
+                create fields, not classes of created fields. E.g.
+                "Relationship" func instead of "RelationshipProperty".
+
+        Does not return backref relationship fields.
+        """
+        fields = cls._fields.copy()
+        backrefs = [
+            key for key, val in fields.items()
+            if (isinstance(val, relationship_fields) and
+                getattr(val, '_is_backref', False))]
+        fields = {key: type(val) for key, val in fields.items()}
+        for key in fields:
+            if fields[key] in relationship_fields:
+                fields[key] = Relationship
+        for name in backrefs:
+            fields.pop(name, None)
+        return fields
 
     @classmethod
     def pk_field(cls):

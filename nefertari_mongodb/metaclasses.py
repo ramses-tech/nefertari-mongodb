@@ -64,6 +64,7 @@ class DocumentMetaclass(MultiEngineMeta, Document.my_metaclass):
             # Create backref ReferenceField. Set its name and `db_field` prop
             backref_field = ReferenceField(**backref_kw)
             backref_field.name = backref_name
+            backref_field._is_backref = True
             if not backref_field.db_field:
                 backref_field.db_field = backref_name
 
