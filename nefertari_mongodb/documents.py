@@ -648,7 +648,7 @@ class BaseMixin(object):
         with_objs = dict([[str(wth.id), wth] for wth in with_objs])
 
         params['%s__in' % join_on] = list(with_objs.keys())
-        objs = cls.get_collection(**params)
+        objs = cls.get_collection(_query_secondary=False, **params)
 
         for ob in objs:
             ob._data[attr_name] = with_objs[getattr(ob, join_on)]
