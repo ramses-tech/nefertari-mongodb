@@ -69,7 +69,6 @@ class TestBaseMixin(object):
         class MyModel(docs.BaseDocument):
             _nested_relationships = ['parent']
             _nesting_depth = 0
-            my_id = fields.IdField()
             name = fields.StringField(primary_key=True)
             status = fields.ChoiceField(choices=['active'])
             groups = fields.ListField(item_type=fields.IntegerField)
@@ -89,7 +88,6 @@ class TestBaseMixin(object):
                     '_pk': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'groups': {'type': 'long'},
-                    'my_id': {'type': 'string'},
                     'name': {'type': 'string'},
                     'parent': {'type': 'string'},
                     'status': {'type': 'string'},
@@ -140,7 +138,6 @@ class TestBaseMixin(object):
 
     def test_pk_field(self):
         class MyModel(docs.BaseDocument):
-            my_id = fields.IdField()
             name = fields.StringField(primary_key=True)
 
         assert MyModel.pk_field() == 'name'
