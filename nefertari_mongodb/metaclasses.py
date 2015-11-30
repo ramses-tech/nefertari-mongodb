@@ -31,7 +31,8 @@ class DocumentMetaclass(MultiEngineMeta, Document.my_metaclass):
     def __init__(self, name, bases, attrs):
         """ Override new class initialization to create backreferences. """
         super(DocumentMetaclass, self).__init__(name, bases, attrs)
-        setup_signals_for(self)
+        if self._sync_events:
+            setup_signals_for(self)
 
         for field_name, field in self._fields.items():
 
