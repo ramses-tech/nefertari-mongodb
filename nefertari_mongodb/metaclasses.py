@@ -2,7 +2,7 @@ from mongoengine import Document
 from mongoengine.queryset import DO_NOTHING
 from nefertari.engine.common import MultiEngineMeta
 
-from .signals import setup_es_signals_for
+from .signals import setup_signals_for
 from .fields import ReferenceField, RelationshipField
 
 
@@ -31,6 +31,8 @@ class DocumentMetaclass(MultiEngineMeta, Document.my_metaclass):
     def __init__(self, name, bases, attrs):
         """ Override new class initialization to create backreferences. """
         super(DocumentMetaclass, self).__init__(name, bases, attrs)
+        setup_signals_for(self)
+
         for field_name, field in self._fields.items():
 
             # Field is not a relationship field
@@ -86,10 +88,3 @@ class DocumentMetaclass(MultiEngineMeta, Document.my_metaclass):
                     target_cls,
                     backref_name,
                     delete_rule)
-
-
-class ESMetaclass(DocumentMetaclass):
-    def __init__(self, name, bases, attrs):
-        self._index_enabled = True
-        setup_es_signals_for(self)
-        return super(ESMetaclass, self).__init__(name, bases, attrs)

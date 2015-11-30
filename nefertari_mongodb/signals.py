@@ -38,7 +38,7 @@ def on_bulk_update(model_cls, objects, request):
         request.registry.notify(event)
 
 
-def setup_es_signals_for(source_cls):
+def setup_signals_for(source_cls):
     signals.post_save.connect(on_post_save, sender=source_cls)
     signals.post_delete.connect(on_post_delete, sender=source_cls)
-    log.info('setup_es_signals_for: %r' % source_cls)
+    log.info('setup_signals_for: %r' % source_cls)

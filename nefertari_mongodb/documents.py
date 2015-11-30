@@ -10,7 +10,7 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset, drop_reserved_params)
 from nefertari.engine.common import MultiEngineDocMixin
 
-from .metaclasses import ESMetaclass, DocumentMetaclass
+from .metaclasses import DocumentMetaclass
 from .signals import on_bulk_update
 from .utils import relationship_fields
 from .fields import (
@@ -801,10 +801,3 @@ class BaseDocument(six.with_metaclass(
         for field_name, field_obj in self._fields.items():
             if isinstance(field_obj, BaseFieldMixin):
                 field_obj.clean(self)
-
-
-class ESBaseDocument(six.with_metaclass(ESMetaclass, BaseDocument)):
-    """ Base for document classes which should be indexed by ES. """
-    meta = {
-        'abstract': True,
-    }
