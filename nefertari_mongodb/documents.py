@@ -404,13 +404,13 @@ class BaseMixin(object):
         return uniques + pk_field
 
     @classmethod
-    def get_or_create(cls, **params):
+    def get_or_create(cls, request=None, **params):
         defaults = params.pop('defaults', {})
         try:
             return cls.objects.get(**params), False
         except mongo.queryset.DoesNotExist:
             defaults.update(params)
-            return cls(**defaults).save(), True
+            return cls(**defaults).save(request=request), True
         except mongo.queryset.MultipleObjectsReturned:
             raise JHTTPBadRequest('Bad or Insufficient Params')
 
