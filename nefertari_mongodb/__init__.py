@@ -5,7 +5,7 @@ import mongoengine
 from .documents import (
     BaseDocument, BaseMixin,
     get_document_cls, get_document_classes)
-from .serializers import JSONEncoder, ESJSONSerializer
+from .serializers import JSONEncoder
 from .utils import (
     relationship_fields, is_relationship_field,
     get_relationship_cls)
@@ -66,7 +66,6 @@ __all__ = [
     'is_relationship_field',
     'get_relationship_cls',
     'JSONEncoder',
-    'ESJSONSerializer',
     'setup_database',
 ]
 
