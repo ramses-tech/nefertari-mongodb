@@ -27,9 +27,6 @@ def on_post_delete(sender, document, **kw):
 
 
 def on_bulk_update(model_cls, objects, request):
-    if not getattr(model_cls, '_index_enabled', False):
-        return
-
     if not objects:
         return
 
