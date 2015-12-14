@@ -16,13 +16,14 @@ def on_post_save(sender, document, **kw):
     elif not created and document._get_changed_fields():
         event_cls = sync_events.ItemUpdated
     if request is not None:
-        request.registry.notify(event_cls(item=document))
+        request.registry.notify(
+            event_cls(item=document, request=request))
 
 
 def on_post_delete(sender, document, **kw):
     request = getattr(document, '_request', None)
     if request is not None:
-        event = sync_events.ItemDeleted(item=document)
+        event = sync_events.ItemDeleted(item=document, request=request)
         request.registry.notify(event)
 
 
@@ -31,7 +32,8 @@ def on_bulk_update(model_cls, objects, request):
         return
 
     if request is not None:
-        event = sync_events.BulkUpdated(items=list(objects))
+        event = sync_events.BulkUpdated(
+            items=list(objects), request=request)
         request.registry.notify(event)
 
 
