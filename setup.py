@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 install_requires = [
     'elasticsearch',
     'mongoengine==0.9',
-    'nefertari>=0.6.0',
+    'nefertari>=0.6.1',
     'pymongo==2.8',
     'pyramid_tm',
     'python-dateutil',
@@ -13,7 +13,7 @@ install_requires = [
 
 setup(
     name='nefertari_mongodb',
-    version="0.4.0",
+    version="0.4.1",
     description='mongodb engine for nefertari',
     classifiers=[
         "Programming Language :: Python",

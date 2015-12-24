@@ -30,7 +30,6 @@ from .fields import (
     Relationship,
     IdField,
     ForeignKeyField,
-
     ListField,
     DictField,
 )
