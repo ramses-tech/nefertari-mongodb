@@ -32,7 +32,7 @@ extensions = [
     'releases'
 ]
 
-releases_github_path = 'brandicted/nefertari-mongodb'
+releases_github_path = 'ramses-tech/nefertari-mongodb'
 releases_debug = True
 
 # Add any paths that contain templates here, relative to this directory.
