@@ -87,7 +87,6 @@ class TestBaseMixin(object):
             'MyModel': {
                 'properties': {
                     '_pk': {'type': 'string'},
-                    '_version': {'type': 'long'},
                     'groups': {'type': 'long'},
                     'my_id': {'type': 'string'},
                     'name': {'type': 'string'},
@@ -103,7 +102,6 @@ class TestBaseMixin(object):
             'MyModel2': {
                 'properties': {
                     '_pk': {'type': 'string'},
-                    '_version': {'type': 'long'},
                     'name': {'type': 'string'},
                     'child': {
                         'type': 'nested',
@@ -259,7 +257,6 @@ class TestBaseDocument(object):
         assert obj.to_dict() == {
             '_pk': 'foo',
             '_type': 'MyModel1',
-            '_version': 0,
             'id': 'foo',
             'name': 'foo',
         }
