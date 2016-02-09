@@ -1,6 +1,9 @@
 Changelog
 =========
 
+* :release:`0.4.2 <????-??-??>`
+* :bug:`77` Deprecated '_version' field
+
 * :release:`0.4.1 <2015-11-18>`
 * :bug:`-` Partially fixed a performance issue when using backref fields, needs additional work
 * :bug:`-` Fixed get_field_params() not handling missing fields
